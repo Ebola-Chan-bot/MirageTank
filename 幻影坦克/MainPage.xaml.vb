@@ -100,7 +100,9 @@ Public NotInheritable Class MainPage
 		进度环.IsActive = True
 		Dim g As Color = 前景色.Color, h As Color = 背景色.Color, 最终字节 As Array(Of Byte) = Await Task.Run(Async Function()
 																										Dim Background1 As Array(Of MSingle) = {g.B, g.G, g.R}, Background2 As Array(Of MSingle) = {h.B, h.G, h.R}, Image1Task As Task(Of Array(Of MSingle)) = 单图处理(表图解码器, Background1), Image2Task As Task(Of Array(Of MSingle)) = 单图处理(里图解码器, Background2), Image1 As Array(Of MSingle) = Await Image1Task, Image2 As Array(Of MSingle) = Await Image2Task, Color As Array(Of MSingle) = Image2 - Image1, Alpha As Array(Of MSingle) = Color / (Background1 - Background2)
-																										Return Cat(0, 范围放缩((Image2 * Background1 - Image1 * Background2) / Color, 0, 255).UInt8.NByte, 范围放缩(Mean(Alpha, 0), 0, 255).UInt8.NByte)
+																										Color = (Image2 * Background1 - Image1 * Background2) / Color
+																										Dim WeightedColor As Array(Of MSingle) = Alpha * Color / 255
+																										Return Cat(0, UInt8(Color * 范围放缩(WeightedColor, 0, 65025) / WeightedColor).NByte, 范围放缩(Mean(Alpha, 0), 0, 255).UInt8.NByte)
 																									End Function)
 		生成位图 = New WriteableBitmap(最终字节.Size(1), 最终字节.Size(2))
 		生成位图.PixelBuffer.AsStream.Write(最终字节, 0, 最终字节.Numel)
