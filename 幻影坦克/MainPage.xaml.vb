@@ -38,7 +38,6 @@ Public NotInheritable Class MainPage
 			Call 原里图.SetBitmapAsync(Await 获取软件位图(里图解码器))
 		End If
 	End Sub
-
 	Sub New()
 
 		' 此调用是设计器所必需的。
@@ -78,34 +77,52 @@ Public NotInheritable Class MainPage
 		暗场背景.ShowAt(sender)
 	End Sub
 
-	Private Function 范围放缩(数组 As Array(Of MSingle), 最小值 As MSingle, 最大值 As MSingle) As Array(Of MSingle)
-		Dim ArrayMin As MSingle = Min(Of MSingle)(Min(数组), 最小值), ArrayMax As MSingle = Max(Of MSingle)(Max(数组), 最大值)
-		If ArrayMin < 最小值 OrElse ArrayMax > 最大值 Then
-			Return (数组 - ArrayMin) * (最大值 - 最小值) / (ArrayMax - ArrayMin) + 最小值
+	Private Function 范围放缩(数组 As SingleArray) As SingleArray
+		Dim ArrayMin As Single = Min(数组), ArrayMax As Single = Max(数组)
+		If Single.IsNegativeInfinity(ArrayMin) Then
+			If Single.IsPositiveInfinity(ArrayMax) Then
+				Return ArrayFun(Function(a As Single) 255 * (Math.Atan(Math.PI * (a / 255 - 1 / 2)) / Math.PI + 1 / 2), 数组)
+			Else
+				Return ArrayFun(Function(a As Single) 65025 / (255 + ArrayMax - a), 数组)
+			End If
 		Else
-			Return 数组
+			If Single.IsPositiveInfinity(ArrayMax) Then
+				Return ArrayFun(Function(a As Single) 65025 / (ArrayMin - 255 - a) + 255, 数组)
+			Else
+				If ArrayMax <= 255 AndAlso ArrayMin >= 0 Then
+					Return 数组
+				Else
+					ArrayMax = Math.Max(ArrayMax, 255)
+					ArrayMin = Math.Min(ArrayMin, 0)
+					Return ArrayFun(Function(a As Single) 255 / (ArrayMax - ArrayMin) * (a - ArrayMin), 数组)
+				End If
+			End If
 		End If
 	End Function
 
-	Shared ReadOnly 透明索引 As ColonExpression() = {Colon(3, 3), Colon(0, [End]), Colon(0, [End])}, 颜色索引 As ColonExpression() = {Colon(0, 2), Colon(0, [End]), Colon(0, [End])}, 位图变换 As New BitmapTransform
-	Private Async Function 单图处理(解码器 As BitmapDecoder, 背景 As Array(Of MSingle)) As Task(Of Array(Of MSingle))
-		Dim c As Byte() = (Await 解码器.GetPixelDataAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Straight, 位图变换, ExifOrientationMode.RespectExifOrientation, ColorManagementMode.DoNotColorManage)).DetachPixelData
-		Dim a As Array(Of MSingle) = [Single](c)
+	Shared ReadOnly 透明索引 As IntegerColon() = {Colon(3, 3), Colon(0, Nothing), Colon(0, Nothing)}, 颜色索引 As IntegerColon() = {Colon(0, 2), Colon(0, Nothing), Colon(0, Nothing)}, 位图变换 As New BitmapTransform
+
+	Private Async Function 单图处理(解码器 As BitmapDecoder, 背景 As SingleArray) As Task(Of SingleArray)
+		Dim c As New ByteArray((Await 解码器.GetPixelDataAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Straight, 位图变换, ExifOrientationMode.RespectExifOrientation, ColorManagementMode.DoNotColorManage)).DetachPixelData)
+		Dim a As SingleArray = ToSingle(c)
 		a.Reshape(4, 解码器.PixelWidth, 解码器.PixelHeight)
-		Dim b As Array(Of MSingle) = a(透明索引)
-		a = a(颜色索引)
-		Return b * (a - 背景)
+		Dim b As SingleArray = a(透明索引)
+		Return (b * a(颜色索引) + (255 - b) * 背景) / 255
 	End Function
 	Private Async Sub Generate_Click(sender As Object, e As RoutedEventArgs) Handles Generate.Click
 		进度环.IsActive = True
-		Dim g As Color = 前景色.Color, h As Color = 背景色.Color, 最终字节 As Array(Of Byte) = Await Task.Run(Async Function()
-																										Dim Background1 As Array(Of MSingle) = {g.B, g.G, g.R}, Background2 As Array(Of MSingle) = {h.B, h.G, h.R}, Image1Task As Task(Of Array(Of MSingle)) = 单图处理(表图解码器, Background1), Image2Task As Task(Of Array(Of MSingle)) = 单图处理(里图解码器, Background2), Image1 As Array(Of MSingle) = Await Image1Task, Image2 As Array(Of MSingle) = Await Image2Task, Color As Array(Of MSingle) = Image2 - Image1, Alpha As Array(Of MSingle) = Color / (Background1 - Background2)
-																										Color = (Image2 * Background1 - Image1 * Background2) / Color
-																										Dim WeightedColor As Array(Of MSingle) = Alpha * Color / 255
-																										Return Cat(0, UInt8(Color * 范围放缩(WeightedColor, 0, 65025) / WeightedColor).NByte, 范围放缩(Mean(Alpha, 0), 0, 255).UInt8.NByte)
-																									End Function)
+		Dim g As Color = 前景色.Color, h As Color = 背景色.Color, 最终字节 As ByteArray = Await Task.Run(Async Function()
+																								   Dim Cb1 As SingleArray = New ByteArray({g.B, g.G, g.R}).ToSingle, Cb2 As SingleArray = New ByteArray({h.B, h.G, h.R}).ToSingle, Image1Task As Task(Of SingleArray) = 单图处理(表图解码器, Cb1), Image2Task As Task(Of SingleArray) = 单图处理(里图解码器, Cb2), Cs1 As SingleArray = Await Image1Task, Cs2 As SingleArray = Await Image2Task, dCb As SingleArray = Cb1 - Cb2, dCs As SingleArray = Sum(dCb * (Cs1 - Cs2), 0) / Sum(dCb ^ 2)
+																								   dCs(IsNan(dCs)) = 0
+																								   dCs *= dCb
+																								   Dim Cs As SingleArray = Cs1 + Cs2
+																								   Cs1 = 范围放缩((Cs + dCs) / 2)
+																								   Cs2 = 范围放缩((Cs - dCs) / 2)
+																								   Dim Alpha As SingleArray = Mean(范围放缩(ArrayFun(Function(a As Single) If(Single.IsNaN(a), 255, 255 * (1 - a)), (Cs1 - Cs2) / dCb)), 0), Color As SingleArray = 范围放缩(255 * (Cs1 - Cb1 + Cs2 - Cb2) / (2 * Alpha) + (Cb1 + Cb2) / 2)
+																								   Return Cat(0, ToByte(Color), ToByte(Alpha))
+																							   End Function)
 		生成位图 = New WriteableBitmap(最终字节.Size(1), 最终字节.Size(2))
-		生成位图.PixelBuffer.AsStream.Write(最终字节, 0, 最终字节.Numel)
+		生成位图.PixelBuffer.AsStream.Write(最终字节.原型, 0, 最终字节.NumEl)
 		明场预览.Source = 生成位图
 		暗场预览.Source = 生成位图
 		进度环.IsActive = False

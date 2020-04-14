@@ -246,14 +246,14 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform">
-      <Version>6.2.9</Version>
+      <Version>6.2.10</Version>
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="MATLAB, Version=1.2.1.0, Culture=neutral, processorArchitecture=AMD64">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\MATLAB测试\MATLAB\bin\x64\Release\netstandard2.0\MATLAB.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\..\MATLAB测试\MATLAB\MATLAB.vbproj">
+      <Project>{73fb7525-e7c6-41a5-9092-32a82ad0d17d}</Project>
+      <Name>MATLAB</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>
