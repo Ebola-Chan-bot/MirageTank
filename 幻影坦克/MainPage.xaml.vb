@@ -59,13 +59,19 @@ Public NotInheritable Class MainPage
 	End Sub
 
 	Private Async Sub 保存_Click(sender As Object, e As RoutedEventArgs) Handles 保存.Click
-		Dim a As IAsyncOperation(Of StorageFile) = 文件保存器.PickSaveFileAsync()
-		Dim c As SoftwareBitmap = SoftwareBitmap.CreateCopyFromBuffer(生成位图.PixelBuffer, BitmapPixelFormat.Bgra8, 生成位图.PixelWidth, 生成位图.PixelHeight, BitmapAlphaMode.Straight)
-		Dim b As StorageFile = Await a
-		If b IsNot Nothing Then
-			Dim d As BitmapEncoder = Await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, Await b.OpenAsync(FileAccessMode.ReadWrite))
-			d.SetSoftwareBitmap(c)
-			Call d.FlushAsync()
+		If 生成位图 Is Nothing Then
+			未生成图像.ShowAt(Generate)
+		Else
+			Dim a As IAsyncOperation(Of StorageFile) = 文件保存器.PickSaveFileAsync, c As SoftwareBitmap = SoftwareBitmap.CreateCopyFromBuffer(生成位图.PixelBuffer, BitmapPixelFormat.Bgra8, 生成位图.PixelWidth, 生成位图.PixelHeight, BitmapAlphaMode.Straight), b As StorageFile = Await a
+			If b IsNot Nothing Then
+				Dim g As Stream = Await b.OpenStreamForWriteAsync
+				g.SetLength(0)
+				g.Close()
+				Dim f As Streams.IRandomAccessStream = Await b.OpenAsync(FileAccessMode.ReadWrite), d As BitmapEncoder = Await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId, f)
+				d.SetSoftwareBitmap(c)
+				Await d.FlushAsync()
+				f.Dispose()
+			End If
 		End If
 	End Sub
 
@@ -100,29 +106,40 @@ Public NotInheritable Class MainPage
 		End If
 	End Function
 
-	Shared ReadOnly 透明索引 As IntegerColon() = {Colon(3, 3), Colon(0, Nothing), Colon(0, Nothing)}, 颜色索引 As IntegerColon() = {Colon(0, 2), Colon(0, Nothing), Colon(0, Nothing)}, 位图变换 As New BitmapTransform
+	Shared ReadOnly 透明索引 As IntegerColon() = {Colon(3, 3), Colon(0, Nothing), Colon(0, Nothing)}, 颜色索引 As IntegerColon() = {Colon(0, 2), Colon(0, Nothing), Colon(0, Nothing)}, 位图变换 As New BitmapTransform, 三色权重 As New SingleArray({3, 1, 1}, {0.114, 0.587, 0.2989}), Cs1索引 As IntegerColon() = {Colon(0, Nothing), Colon(0, Nothing), Colon(0, Nothing), Colon(0, 0)}, Cs2索引 As IntegerColon() = {Colon(0, Nothing), Colon(0, Nothing), Colon(0, Nothing), Colon(1, 1)}
 
 	Private Async Function 单图处理(解码器 As BitmapDecoder, 背景 As SingleArray) As Task(Of SingleArray)
 		Dim c As New ByteArray((Await 解码器.GetPixelDataAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Straight, 位图变换, ExifOrientationMode.RespectExifOrientation, ColorManagementMode.DoNotColorManage)).DetachPixelData)
 		Dim a As SingleArray = ToSingle(c)
 		a.Reshape(4, 解码器.PixelWidth, 解码器.PixelHeight)
 		Dim b As SingleArray = a(透明索引)
-		Return (b * a(颜色索引) + (255 - b) * 背景) / 255
+		Return BsxFun(Function(d As Single, e As Single) (d + e) / 255, b * a(颜色索引), BsxFun(Function(d As Single, e As Single) (255 - d) * e, b, 背景))
+	End Function
+	Private Function 颜色校正(Cs As SingleArray, dCs As SingleArray, Plus As Boolean) As Task(Of SingleArray)
+		If Plus Then
+			Return Task.Run(Function() BsxFun(Function(a As Single, b As Single) (a + b) / 2, Cs, dCs))
+		Else
+			Return Task.Run(Function() BsxFun(Function(a As Single, b As Single) (a - b) / 2, Cs, dCs))
+		End If
 	End Function
 	Private Async Sub Generate_Click(sender As Object, e As RoutedEventArgs) Handles Generate.Click
 		进度环.IsActive = True
-		Dim g As Color = 前景色.Color, h As Color = 背景色.Color, 最终字节 As ByteArray = Await Task.Run(Async Function()
-																								   Dim Cb1 As SingleArray = New ByteArray({g.B, g.G, g.R}).ToSingle, Cb2 As SingleArray = New ByteArray({h.B, h.G, h.R}).ToSingle, Image1Task As Task(Of SingleArray) = 单图处理(表图解码器, Cb1), Image2Task As Task(Of SingleArray) = 单图处理(里图解码器, Cb2), Cs1 As SingleArray = Await Image1Task, Cs2 As SingleArray = Await Image2Task, dCb As SingleArray = Cb1 - Cb2, dCs As SingleArray = Sum(dCb * (Cs1 - Cs2), 0) / Sum(dCb ^ 2)
+		Dim g As Color = 前景色.Color, h As Color = 背景色.Color, 最终字节 As ByteArray = Await Task.Run(Async Function() As Task(Of ByteArray)
+																								   Dim Cb1 As SingleArray = New ByteArray({g.B, g.G, g.R}).ToSingle, Cb2 As SingleArray = New ByteArray({h.B, h.G, h.R}).ToSingle, Image1Task As Task(Of SingleArray) = 单图处理(表图解码器, Cb1), Image2Task As Task(Of SingleArray) = 单图处理(里图解码器, Cb2), Cs1 As SingleArray = Await Image1Task, Cs2 As SingleArray = Await Image2Task, dCb As SingleArray = Cb1 - Cb2, dCs As SingleArray = Sum(三色权重 ^ 2 * dCb * (Cs1 - Cs2), 0) / Sum(BsxFun(Function(a As Single, b As Single) CSng((a * b) ^ 2), 三色权重, dCb))
 																								   dCs(IsNan(dCs)) = 0
 																								   dCs *= dCb
 																								   Dim Cs As SingleArray = Cs1 + Cs2
-																								   Cs1 = 范围放缩((Cs + dCs) / 2)
-																								   Cs2 = 范围放缩((Cs - dCs) / 2)
-																								   Dim Alpha As SingleArray = Mean(范围放缩(ArrayFun(Function(a As Single) If(Single.IsNaN(a), 255, 255 * (1 - a)), (Cs1 - Cs2) / dCb)), 0), Color As SingleArray = 范围放缩(255 * (Cs1 - Cb1 + Cs2 - Cb2) / (2 * Alpha) + (Cb1 + Cb2) / 2)
+																								   Cs = 范围放缩(Cat(3, Await 颜色校正(Cs, dCs, True), Await 颜色校正(Cs, dCs, False)))
+																								   Cs1 = Cs(Cs1索引)
+																								   Cs2 = Cs(Cs2索引)
+																								   Dim Alpha As SingleArray = 范围放缩(ArrayFun(Function(a As Single) 255 * (1 - a), (Cs1 - Cs2) / dCb))
+																								   Alpha(IsNan(Alpha)) = 255
+																								   Alpha = Mean(Alpha, 0)
+																								   Dim Cb As SingleArray = Cb1 + Cb2, Color As SingleArray = 范围放缩(BsxFun(Function(a As Single, b As Single) (a + b) / 2, BsxFun(Function(a As Single, b As Single) 255 * a / b, Cs1 + Cs2 - Cb, Alpha), Cb))
 																								   Return Cat(0, ToByte(Color), ToByte(Alpha))
 																							   End Function)
 		生成位图 = New WriteableBitmap(最终字节.Size(1), 最终字节.Size(2))
-		生成位图.PixelBuffer.AsStream.Write(最终字节.原型, 0, 最终字节.NumEl)
+		生成位图.PixelBuffer.AsStream.Write(最终字节.本体.ToArray, 0, 最终字节.NumEl)
 		明场预览.Source = 生成位图
 		暗场预览.Source = 生成位图
 		进度环.IsActive = False

@@ -31,6 +31,9 @@
 		<SoftwareBitmapSource x:Name="原里图"/>
 		<SolidColorBrush x:Name="前景色" Color="{x:Bind SurfaceColor.Color,Mode=OneWay}"/>
 		<SolidColorBrush x:Name="背景色" Color="{x:Bind HiddenColor.Color,Mode=OneWay}"/>
+		<Flyout x:Name="未生成图像">
+			<TextBlock Text="请先生成幻影坦克再保存"/>
+		</Flyout>
 	</Page.Resources>
 	<Grid>
 		<Grid.ColumnDefinitions>
