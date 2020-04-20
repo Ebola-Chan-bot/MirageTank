@@ -34,6 +34,9 @@
 		<Flyout x:Name="未生成图像">
 			<TextBlock Text="请先生成幻影坦克再保存"/>
 		</Flyout>
+		<Flyout x:Name="已复制">
+			<TextBlock Text="已复制"/>
+		</Flyout>
 	</Page.Resources>
 	<Grid>
 		<Grid.ColumnDefinitions>
@@ -58,13 +61,27 @@
 		<TextBlock Grid.Column="0" Grid.Row="2" Text="预览（点击图片选择背景色）" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" Width="48"/>
 		<TextBlock Grid.Column="1" Grid.Row="0" Text="表图" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 		<TextBlock Grid.Column="2" Grid.Row="0" Text="里图" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-		<Image x:Name="表图" Grid.Column="1" Grid.Row="1" Source="{StaticResource 原表图}" Stretch="Uniform"/>
+		<Image x:Name="表图" Grid.Column="1" Grid.Row="1" Source="{StaticResource 原表图}" Stretch="Uniform" AllowDrop="True" CanDrag="True">
+			<Image.ContextFlyout>
+				<MenuFlyout>
+					<MenuFlyoutItem x:Name="复制表图" Text="复制" Icon="Copy"/>
+					<MenuFlyoutItem x:Name="粘贴表图" Text="粘贴" Icon="Paste"/>
+				</MenuFlyout>
+			</Image.ContextFlyout>
+		</Image>
 		<Grid x:Name="明场Grid" Grid.Column="1" Grid.Row="2" Background="{StaticResource 前景色}">
-			<Image x:Name="明场预览" />
+			<Image x:Name="明场预览" CanDrag="True"/>
 		</Grid>
-		<Image x:Name="里图" Grid.Column="2" Grid.Row="1" Source="{StaticResource 原里图}" Stretch="Uniform"/>
+		<Image x:Name="里图" Grid.Column="2" Grid.Row="1" Source="{StaticResource 原里图}" Stretch="Uniform" AllowDrop="True" CanDrag="True">
+		<Image.ContextFlyout>
+			<MenuFlyout>
+				<MenuFlyoutItem x:Name="复制里图" Text="复制" Icon="Copy"/>
+				<MenuFlyoutItem x:Name="粘贴里图" Text="粘贴" Icon="Paste"/>
+			</MenuFlyout>
+		</Image.ContextFlyout>
+		</Image>
 		<Grid x:Name="暗场Grid" Grid.Column="2" Grid.Row="2" Background="{StaticResource 背景色}">
-			<Image x:Name="暗场预览"/>
+			<Image x:Name="暗场预览" CanDrag="True"/>
 		</Grid>
 		<ProgressRing Name="进度环" Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 	</Grid>
