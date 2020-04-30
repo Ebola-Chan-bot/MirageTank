@@ -176,13 +176,17 @@ Public NotInheritable Class MainPage
 		args.Data.SetBitmap(RandomAccessStreamReference.CreateFromStream(表图流))
 	End Sub
 
-	Shared ReadOnly 透明索引 As IntegerColon() = {Colon(3, 3), Colon(0, Nothing), Colon(0, Nothing)}, 颜色索引 As IntegerColon() = {Colon(0, 2), Colon(0, Nothing), Colon(0, Nothing)}, 位图变换 As New BitmapTransform, 三色权重 As New SingleArray({3, 1, 1}, {0.114, 0.587, 0.2989}), Cs1索引 As IntegerColon() = {Colon(0, Nothing), Colon(0, Nothing), Colon(0, Nothing), Colon(0, 0)}, Cs2索引 As IntegerColon() = {Colon(0, Nothing), Colon(0, Nothing), Colon(0, Nothing), Colon(1, 1)}
+	Shared ReadOnly 透明索引 As IntegerColon() = {Colon(3, 3), Colon(0, Nothing), Colon(0, Nothing)}, 颜色索引 As IntegerColon() = {Colon(0, 2), Colon(0, Nothing), Colon(0, Nothing)}, 三色权重 As New SingleArray({3, 1, 1}, {0.114, 0.587, 0.2989}), Cs1索引 As IntegerColon() = {Colon(0, Nothing), Colon(0, Nothing), Colon(0, Nothing), Colon(0, 0)}, Cs2索引 As IntegerColon() = {Colon(0, Nothing), Colon(0, Nothing), Colon(0, Nothing), Colon(1, 1)}
 
-	Private Async Function 单图处理(解码器 As BitmapDecoder, 背景 As SingleArray) As Task(Of SingleArray)
-		Dim c As New ByteArray((Await 解码器.GetPixelDataAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Straight, 位图变换, ExifOrientationMode.RespectExifOrientation, ColorManagementMode.DoNotColorManage)).DetachPixelData)
-		Dim a As SingleArray = ToSingle(c)
-		a.Reshape(4, 解码器.PixelWidth, 解码器.PixelHeight)
-		Dim b As SingleArray = a(透明索引)
+	Private Async Function 单图处理(解码器 As BitmapDecoder, 背景 As SingleArray, 高度 As Integer, 宽度 As Integer) As Task(Of SingleArray)
+		Dim 像素高度 As UInteger = 解码器.PixelHeight, 像素宽度 As UInteger = 解码器.PixelWidth, 放大倍数 As Single = Math.Min(高度 / 像素高度, 宽度 / 像素宽度), 放大宽度 As Integer = 像素宽度 * 放大倍数, 放大高度 As Integer = 像素高度 * 放大倍数, 位图变换 As New BitmapTransform With {.ScaledHeight = 放大高度, .ScaledWidth = 放大宽度}, c As New ByteArray((Await 解码器.GetPixelDataAsync(BitmapPixelFormat.Bgra8, BitmapAlphaMode.Straight, 位图变换, ExifOrientationMode.RespectExifOrientation, ColorManagementMode.DoNotColorManage)).DetachPixelData)
+		c.Reshape(4, 放大宽度, 放大高度)
+		If 高度 > 放大高度 OrElse 宽度 > 放大宽度 Then
+			Dim f As New ByteArray({4, 宽度, 高度}), g As Integer = (宽度 - 放大宽度) / 2, h As Integer = (高度 - 放大高度) / 2
+			f({Colon(0, Nothing), Colon(g, g + 放大宽度 - 1), Colon(h, h + 放大高度 - 1)}) = c
+			c = f
+		End If
+		Dim a As SingleArray = ToSingle(c), b As SingleArray = a(透明索引)
 		Return BsxFun(Function(d As Single, e As Single) (d + e) / 255, b * a(颜色索引), BsxFun(Function(d As Single, e As Single) (255 - d) * e, b, 背景))
 	End Function
 	Private Function 颜色校正(Cs As SingleArray, dCs As SingleArray, Plus As Boolean) As Task(Of SingleArray)
@@ -195,7 +199,7 @@ Public NotInheritable Class MainPage
 	Private Async Sub Generate_Click(sender As Object, e As RoutedEventArgs) Handles Generate.Click
 		进度环.IsActive = True
 		Dim g As Color = 前景色.Color, h As Color = 背景色.Color, 最终字节 = Await Task.Run(Async Function() As Task(Of ByteArray)
-																					  Dim Cb1 As SingleArray = New ByteArray({g.B, g.G, g.R}).ToSingle, Cb2 As SingleArray = New ByteArray({h.B, h.G, h.R}).ToSingle, Image1Task As Task(Of SingleArray) = 单图处理(表图解码器, Cb1), Image2Task As Task(Of SingleArray) = 单图处理(里图解码器, Cb2), Cs1 As SingleArray = Await Image1Task, Cs2 As SingleArray = Await Image2Task, dCb As SingleArray = Cb1 - Cb2, dCs As SingleArray = Sum(三色权重 ^ 2 * dCb * (Cs1 - Cs2), 0) / Sum(BsxFun(Function(a As Single, b As Single) CSng((a * b) ^ 2), 三色权重, dCb))
+																					  Dim Cb1 As SingleArray = New ByteArray({g.B, g.G, g.R}).ToSingle, Cb2 As SingleArray = New ByteArray({h.B, h.G, h.R}).ToSingle, 宽度 As Integer = Math.Max(表图解码器.PixelWidth, 里图解码器.PixelWidth), 高度 As Integer = Math.Max(表图解码器.PixelHeight, 里图解码器.PixelHeight), Image1Task As Task(Of SingleArray) = 单图处理(表图解码器, Cb1, 高度, 宽度), Image2Task As Task(Of SingleArray) = 单图处理(里图解码器, Cb2, 高度, 宽度), Cs1 As SingleArray = Await Image1Task, Cs2 As SingleArray = Await Image2Task, dCb As SingleArray = Cb1 - Cb2, dCs As SingleArray = Sum(三色权重 ^ 2 * dCb * (Cs1 - Cs2), 0) / Sum(BsxFun(Function(a As Single, b As Single) CSng((a * b) ^ 2), 三色权重, dCb))
 																					  dCs(IsNan(dCs)) = 0
 																					  dCs *= dCb
 																					  Dim Cs As SingleArray = Cs1 + Cs2
