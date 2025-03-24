@@ -1,0 +1,8 @@
+﻿<maui:MauiWinUIApplication
+    x:Class="幻影坦克MAUI.WinUI.App"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:maui="using:Microsoft.Maui"
+    xmlns:local="using:幻影坦克MAUI.WinUI">
+
+</maui:MauiWinUIApplication>

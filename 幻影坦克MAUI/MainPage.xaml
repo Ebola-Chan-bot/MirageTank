@@ -1,0 +1,86 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
+             x:Class="幻影坦克MAUI.MainPage">
+	<Page.Resources>
+		<toolkit:Popup x:Name="明场背景">
+			<Grid>
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto"/>
+					<RowDefinition/>
+				</Grid.RowDefinitions>
+				<Label Text="选择表图背景色" Grid.Row="0"/>
+				<toolkit:ColorPicker x:Name="SurfaceColor" Color="White"/>
+			</Grid>
+		</toolkit:Popup>
+		<toolkit:Popup x:Name="暗场背景">
+			<Grid>
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto"/>
+					<RowDefinition/>
+				</Grid.RowDefinitions>
+				<Label Text="选择里图背景色" Grid.Row="0"/>
+				<toolkit:ColorPicker x:Name="HiddenColor" Color="Black"/>
+			</Grid>
+		</toolkit:Popup>
+		<ImageSource x:Name="原表图"/>
+		<ImageSource x:Name="原里图"/>
+		<SolidColorBrush x:Name="前景色" Color="{x:Bind SurfaceColor.Color,Mode=OneWay}"/>
+		<SolidColorBrush x:Name="背景色" Color="{x:Bind HiddenColor.Color,Mode=OneWay}"/>
+		<toolkit:Popup x:Name="未生成图像">
+			<Label Text="请先生成幻影坦克再保存"/>
+		</toolkit:Popup>
+		<toolkit:Popup x:Name="已复制">
+			<Label Text="已复制"/>
+		</toolkit:Popup>
+	</Page.Resources>
+	<Grid>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="Auto"/>
+			<ColumnDefinition/>
+			<ColumnDefinition/>
+		</Grid.ColumnDefinitions>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition/>
+			<RowDefinition/>
+		</Grid.RowDefinitions>
+		<Grid Grid.Column="0" Grid.Row="0">
+			<Grid.RowDefinitions>
+				<RowDefinition/>
+				<RowDefinition/>
+			</Grid.RowDefinitions>
+			<Button x:Name="Generate" Text="生成" Grid.Row="0"/>
+			<Button x:Name="保存" Text="保存" Grid.Row="1"/>
+		</Grid>
+		<Label Grid.Column="0" Grid.Row="1" Text="原图（点击图片选择文件）" Width="48"/>
+		<Label Grid.Column="0" Grid.Row="2" Text="预览（点击图片选择背景色）" Width="48"/>
+		<Label Grid.Column="1" Grid.Row="0" Text="表图"/>
+		<Label Grid.Column="2" Grid.Row="0" Text="里图"/>
+		<Image x:Name="表图" Grid.Column="1" Grid.Row="1" Source="{StaticResource 原表图}">
+			<FlyoutBase.ContextFlyout>
+				<MenuFlyout>
+					<MenuFlyoutItem x:Name="复制表图" Text="复制"/>
+					<MenuFlyoutItem x:Name="粘贴表图" Text="粘贴"/>
+				</MenuFlyout>
+			</FlyoutBase.ContextFlyout>
+		</Image>
+		<Grid x:Name="明场Grid" Grid.Column="1" Grid.Row="2" Background="{StaticResource 前景色}">
+			<Image x:Name="明场预览"/>
+		</Grid>
+		<Image x:Name="里图" Grid.Column="2" Grid.Row="1" Source="{StaticResource 原里图}">
+			<FlyoutBase.ContextFlyout>
+				<MenuFlyout>
+					<MenuFlyoutItem x:Name="复制里图" Text="复制"/>
+					<MenuFlyoutItem x:Name="粘贴里图" Text="粘贴"/>
+				</MenuFlyout>
+			</FlyoutBase.ContextFlyout>
+		</Image>
+		<Grid x:Name="暗场Grid" Grid.Column="2" Grid.Row="2" Background="{StaticResource 背景色}">
+			<Image x:Name="暗场预览"/>
+		</Grid>
+		<ActivityIndicator x:Name="进度环" Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="2"/>
+	</Grid>
+
+</ContentPage>
