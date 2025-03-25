@@ -2,16 +2,24 @@
 {
     public partial class MainPage : ContentPage
     {
-        int count = 0;
-
         public MainPage()
         {
             InitializeComponent();
         }
 
-        private void OnCounterClicked(object sender, EventArgs e)
-        {
-        }
-    }
+		private async void OnImageTapped(object sender, TappedEventArgs e)
+		{
+			var result = await FilePicker.Default.PickAsync(new PickOptions
+			{
+				PickerTitle = "请选择一张图片",
+				FileTypes = FilePickerFileType.Images
+			});
 
+			if (result != null)
+			{
+				var stream = await result.OpenReadAsync();
+				((Image)sender).Source = ImageSource.FromStream(() => stream);
+			}
+		}
+	}
 }
