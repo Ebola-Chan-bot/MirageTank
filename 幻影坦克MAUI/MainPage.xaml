@@ -3,7 +3,7 @@
 			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 			 xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
 			 xmlns:mcp="clr-namespace:Maui.ColorPicker;assembly=Maui.ColorPicker"
-			 x:Class="幻影坦克MAUI.MainPage">
+			 x:Class="幻影坦克MAUI.MainPage" Loaded="ContentPage_Loaded">
 	<ContentPage.Resources>
 		<toolkit:Popup x:Key="明场背景">
 			<Grid>
@@ -57,7 +57,7 @@
 		<Label Grid.Column="2" Grid.Row="0" Text="预览（点击图片选择背景色）" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
 		<Label Grid.Column="0" Grid.Row="1" Text="表图" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
 		<Label Grid.Column="0" Grid.Row="2" Text="里图" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
-		<Image x:Name="表图" Grid.Column="1" Grid.Row="1" Source="surface.jpg">
+		<Image x:Name="表图" Grid.Column="1" Grid.Row="1">
 			<FlyoutBase.ContextFlyout>
 				<MenuFlyout>
 					<MenuFlyoutItem x:Name="复制表图" Text="复制"/>
@@ -65,13 +65,13 @@
 				</MenuFlyout>
 			</FlyoutBase.ContextFlyout>
 			<Image.GestureRecognizers>
-				<TapGestureRecognizer Tapped="OnImageTapped" />
+				<TapGestureRecognizer Tapped="表图_Tapped" />
 			</Image.GestureRecognizers>
 		</Image>
 		<Grid x:Name="明场Grid" Grid.Column="2" Grid.Row="1" Background="{StaticResource 前景色}">
 			<Image x:Name="明场预览"/>
 		</Grid>
-		<Image x:Name="里图" Grid.Column="1" Grid.Row="2" Source="hidden.jpg">
+		<Image x:Name="里图" Grid.Column="1" Grid.Row="2">
 			<FlyoutBase.ContextFlyout>
 				<MenuFlyout>
 					<MenuFlyoutItem x:Name="复制里图" Text="复制"/>
@@ -79,7 +79,7 @@
 				</MenuFlyout>
 			</FlyoutBase.ContextFlyout>
 			<Image.GestureRecognizers>
-				<TapGestureRecognizer Tapped="OnImageTapped" />
+				<TapGestureRecognizer Tapped="里图_Tapped" />
 			</Image.GestureRecognizers>
 		</Image>
 		<Grid x:Name="暗场Grid" Grid.Column="2" Grid.Row="2" Background="{StaticResource 背景色}">
