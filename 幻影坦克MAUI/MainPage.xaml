@@ -50,7 +50,7 @@
 				<RowDefinition/>
 				<RowDefinition/>
 			</Grid.RowDefinitions>
-			<Button x:Name="Generate" Text="生成" Grid.Row="0"/>
+			<Button x:Name="Generate" Text="生成" Grid.Row="0" Clicked="Generate_Clicked"/>
 			<Button x:Name="保存" Text="保存" Grid.Row="1"/>
 		</Grid>
 		<Label Grid.Column="1" Grid.Row="0" Text="原图（点击图片选择文件）" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>

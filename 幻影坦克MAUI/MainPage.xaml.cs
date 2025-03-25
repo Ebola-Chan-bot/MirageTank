@@ -21,5 +21,10 @@
 				((Image)sender).Source = ImageSource.FromStream(() => stream);
 			}
 		}
+
+		private void Generate_Clicked(object sender, EventArgs e)
+		{
+
+		}
 	}
 }
