@@ -26,7 +26,7 @@
 			</Grid>
 		</toolkit:Popup>
 		<SolidColorBrush x:Key="前景色" Color="{Binding Source={x:Reference SurfaceColor},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
-		<SolidColorBrush x:Key="背景色" Color="{Binding Source={x:Reference SurfaceColor},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
+		<SolidColorBrush x:Key="背景色" Color="{Binding Source={x:Reference HiddenColor},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
 		<toolkit:Popup x:Key="未生成图像">
 			<Label Text="请先生成幻影坦克再保存"/>
 		</toolkit:Popup>
