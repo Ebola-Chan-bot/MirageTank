@@ -1,37 +1,39 @@
-﻿namespace Onnx
+﻿using Google.Protobuf.Collections;
+
+namespace Onnx
 {
-	class 变量
+	abstract class 变量
 	{
 		protected GraphProto 计算图;
-
+		//使用If子图时，需要设置变量名称，与子图的输入名称匹配
+		public abstract string 名称 { get; set; }
 		protected 变量(GraphProto 计算图)
 		{
 			this.计算图 = 计算图;
 		}
+		//使用此方法取得输出变量后，原来的变量将不再可用
 		public virtual 输出变量 Identity(string 输出名称, TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
 		{
-			NodeProto 新节点 = new()
+			计算图.Name = 输出名称;
+			计算图.Output.Add(new ValueInfoProto()
+			{
+				Name = 输出名称,
+				Type = new()
+				{
+					TensorType = new()
+					{
+						ElemType = (int)数据类型,
+						Shape = new() { Dim = { from 维度值 in 各维尺寸 select new TensorShapeProto.Types.Dimension { DimValue = 维度值 } } }
+					}
+				}
+			});
+			计算图.Node.Add(new NodeProto()
 			{
 				OpType = "Identity",
 				Input = { 计算图.Name },
 				Output = { 输出名称 }
-			};
-			return new(new()
-			{
-				Name = 输出名称,
-				Input = { 计算图.Input },
-				Output = { new ValueInfoProto()
-				{
-					Name = 输出名称,
-					Type = new(){TensorType = new()
-					{
-						ElemType = (int)数据类型,
-						Shape = new(){Dim = { from 维度值 in 各维尺寸 select new TensorShapeProto.Types.Dimension { DimValue = 维度值 } }}
-					}}
-				} },
-				Initializer = { 计算图.Initializer },
-				Node = { 计算图.Node.Append(新节点) }
 			});
+			return new(计算图);
 		}
 		public static IEnumerable<中间变量> 运算(string 运算名称, IEnumerable<变量> 输入, IEnumerable<AttributeProto> 特性, int 输出个数)
 		{
@@ -175,13 +177,76 @@
 				}
 			], 如果真.Output.Count);
 		}
+		public static 中间变量 Concat(int 轴, params 变量[] 输入)
+		{
+			return 运算("Concat", 输入, [new()
+			{
+				Name = "axis",
+				Type = AttributeProto.Types.AttributeType.Int,
+				I = 轴
+			}]);
+		}
+		public 中间变量 Atan()
+		{
+			return 运算("Atan", [this]);
+		}
+		public static 中间变量 operator &(变量 左, 变量 右)
+		{
+			return 运算("And", [左, 右]);
+		}
+		public static 中间变量 operator |(变量 左, 变量 右)
+		{
+			return 运算("Or", [左, 右]);
+		}
+		public static 中间变量 operator!(变量 操作数)
+		{
+			return 运算("Not", [操作数]);
+		}
+		public static 中间变量 operator==(变量 左, 变量 右)
+		{
+			return 运算("Equal", [左, 右]);
+		}
+		public static 中间变量 operator !=(变量 左, 变量 右)
+		{
+			return !(左 == 右);
+		}
+		public static 中间变量 operator <(变量 左, 变量 右)
+		{
+			return 运算("Less", [左, 右]);
+		}
+		public static 中间变量 operator >(变量 左, 变量 右)
+		{
+			return 运算("Greater", [左, 右]);
+		}
+		public static 中间变量 operator <=(变量 左, 变量 右)
+		{
+			return 运算("LessOrEqual", [左, 右]);
+		}
+		public static 中间变量 operator >=(变量 左, 变量 右)
+		{
+			return 运算("GreaterOrEqual", [左, 右]);
+		}
+		public 中间变量 ReduceMean(变量 轴)
+		{
+			return 运算("ReduceMean", [this, 轴]);
+		}
+
 	}
 	class 输出变量:变量
 	{
 		//使用Identity方法获取此类对象，而不是直接构造
 		internal 输出变量(GraphProto 计算图) : base(计算图) { }
+		public override string 名称 
+		{ 
+			get => 计算图.Name;
+			set 
+			{
+				计算图.Output.Single().Name = value;
+				计算图.Name = value;
+			}
+		}
 		//仅需传入所有输出变量即可生成最小计算模型
-		public static GraphProto 生成计算图(IEnumerable<输出变量> 所有输出)
+		public static GraphProto 生成计算图(params 输出变量[] 所有输出)
 		{
 			GraphProto 返回值 = new()
 			{
@@ -210,6 +275,15 @@
 				}}
 		})
 	{
+		public override string 名称
+		{
+			get => 计算图.Name;
+			set
+			{
+				计算图.Input.Single().Name = value;
+				计算图.Name = value;
+			}
+		}
 	}
 	class 常量 : 变量
 	{
@@ -256,6 +330,15 @@
 			} }
 		})
 		{ }
+		public override string 名称
+		{
+			get => 计算图.Name;
+			set
+			{
+				计算图.Initializer.Single().Name = value;
+				计算图.Name = value;
+			}
+		}
 	}
 	class 中间变量:变量
 	{
@@ -263,22 +346,50 @@
 		internal 中间变量(GraphProto 计算图) : base(计算图) { }
 		public override 输出变量 Identity(string 输出名称, TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
 		{
-			return new(new()
+			计算图.Name = 输出名称;
+			计算图.Output.Add(new ValueInfoProto()
 			{
 				Name = 输出名称,
-				Input = { 计算图.Input },
-				Initializer = { 计算图.Initializer },
-				Node = { 计算图.Node },
-				Output = {new ValueInfoProto()
+				Type = new()
 				{
-					Name = 输出名称,
-					Type = new(){TensorType = new()
+					TensorType = new()
 					{
 						ElemType = (int)数据类型,
-						Shape = new(){Dim = { from 维度值 in 各维尺寸 select new TensorShapeProto.Types.Dimension { DimValue = 维度值 } }}
-					}}
-				} }
+						Shape = new() { Dim = { from 维度值 in 各维尺寸 select new TensorShapeProto.Types.Dimension { DimValue = 维度值 } } }
+					}
+				}
 			});
+			RepeatedField<string> 最终输出 = 计算图.Node.Last().Output;
+			最终输出.Remove(计算图.Name);
+			最终输出.Add(输出名称);
+			return new(计算图);
+		}
+		//取得和此中间变量同名的输出变量。那之后，此中间变量将不再可用。
+		public 输出变量 Identity(TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
+		{
+			计算图.Output.Add(new ValueInfoProto()
+			{
+				Name = 名称,
+				Type = new()
+				{
+					TensorType = new()
+					{
+						ElemType = (int)数据类型,
+						Shape = new() { Dim = { from 维度值 in 各维尺寸 select new TensorShapeProto.Types.Dimension { DimValue = 维度值 } } }
+					}
+				}
+			});
+			return new(计算图);
+		}
+		public override string 名称
+		{
+			get => 计算图.Name;
+			set
+			{
+				RepeatedField<string> 节点输出 = 计算图.Node.Last().Output;
+				节点输出[节点输出.IndexOf(计算图.Name)] = value;
+				计算图.Name = value;
+			}
 		}
 	}
 }
