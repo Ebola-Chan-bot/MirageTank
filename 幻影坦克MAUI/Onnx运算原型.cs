@@ -2,15 +2,12 @@
 
 namespace Onnx
 {
-	abstract class 变量
+	abstract class 变量(GraphProto 计算图)
 	{
-		protected GraphProto 计算图;
+		protected GraphProto 计算图 = 计算图;
 		//使用If子图时，需要设置变量名称，与子图的输入名称匹配
 		public abstract string 名称 { get; set; }
-		protected 变量(GraphProto 计算图)
-		{
-			this.计算图 = 计算图;
-		}
+
 		//使用此方法取得输出变量后，原来的变量将不再可用
 		public virtual 输出变量 Identity(string 输出名称, TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
 		{
@@ -35,34 +32,15 @@ namespace Onnx
 			});
 			return new(计算图);
 		}
+		//使用此方法取得输出变量后，原来的变量将不再可用
+		public virtual 输出变量 Identity(TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
+		{
+			return Identity(分配标识符(), 数据类型, 各维尺寸);
+		}
 		private static byte 标识符计数 = 0;
 		public static string 分配标识符()
 		{
 			return "_埃博拉酱_" + 标识符计数++;
-		}
-		public static IEnumerable<中间变量> 运算(string 运算名称, IEnumerable<变量> 输入, IEnumerable<AttributeProto> 特性, int 输出个数)
-		{
-			string[] 变量名 = Enumerable.Range(0, 输出个数).Select(_ => 分配标识符()).ToArray();
-			//必须先ToArray确定下来，不能保留IEnumerable，否则每次都会获取新的标识符，不能重用
-
-			GraphProto 模板 = new()
-			{
-				Input = { 输入.SelectMany(值 => 值.计算图.Input).Distinct() },
-				Initializer = { 输入.SelectMany(值 => 值.计算图.Initializer).Distinct() },
-				Node = { 输入.SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
-				{
-					OpType = 运算名称,
-					Input = { 输入.Select(值=>值.计算图.Name) },
-					Output = { 变量名 },
-					Attribute = { 特性 }
-				} }
-			};
-			foreach (string 名称 in 变量名)
-			{
-				GraphProto 实例 = 模板.Clone();
-				实例.Name = 名称;
-				yield return new(实例);
-			}
 		}
 		public static 中间变量 运算(string 运算名称, IEnumerable<变量> 输入, IEnumerable<AttributeProto> 特性)
 		{
@@ -171,24 +149,44 @@ namespace Onnx
 				}
 			]);
 		}
-		//两个子图的输出数量必须相同
-		public IEnumerable<中间变量> If(GraphProto 如果真, GraphProto 如果假)
+		//两个子图的输出数量必须相同，此外还需要提供所有名称与子图输入匹配的，此算子所在的直接父图的输入变量
+		public IEnumerable<中间变量> If(GraphProto 如果真, GraphProto 如果假, params 变量[] 输入变量)
 		{
-			return 运算("If", [this],
-			[
-				new()
+			string[] 变量名 = [.. Enumerable.Range(0, 如果真.Output.Count).Select(_ => 分配标识符())];
+			//必须先ToArray确定下来，不能保留IEnumerable，否则每次都会获取新的标识符，不能重用
+
+			GraphProto 模板 = new()
+			{
+				Input = {输入变量.Append(this).SelectMany(值 => 值.计算图.Input).Distinct() },
+				Initializer = { 输入变量.Append(this).SelectMany(值 => 值.计算图.Initializer).Distinct() },
+				Node = { 输入变量.Append(this).SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
 				{
-					Name = "then_branch",
-					Type = AttributeProto.Types.AttributeType.Graph,
-					G = 如果真
-				},
-				new()
-				{
-					Name = "else_branch",
-					Type = AttributeProto.Types.AttributeType.Graph,
-					G = 如果假
-				}
-			], 如果真.Output.Count);
+					OpType = "If",
+					Input = { 计算图.Name },
+					Output = { 变量名 },
+					Attribute =
+					{
+						new AttributeProto()
+						{
+							Name = "then_branch",
+							Type = AttributeProto.Types.AttributeType.Graph,
+							G = 如果真
+						},
+						new AttributeProto()
+						{
+							Name = "else_branch",
+							Type = AttributeProto.Types.AttributeType.Graph,
+							G = 如果假
+						}
+					}
+				} }
+			};
+			foreach (string 名称 in 变量名)
+			{
+				GraphProto 实例 = 模板.Clone();
+				实例.Name = 名称;
+				yield return new(实例);
+			}
 		}
 		public static 中间变量 Concat(int 轴, params 变量[] 输入)
 		{
@@ -245,15 +243,32 @@ namespace Onnx
 		}
 		public IEnumerable<中间变量> Split(int 轴, int 拆分个数, 变量 拆分长度)
 		{
-			return 运算("Split", [this, 拆分长度],
-			[
-				new()
+			string[] 变量名 = [.. Enumerable.Range(0, 拆分个数).Select(_ => 分配标识符())];
+			//必须先ToArray确定下来，不能保留IEnumerable，否则每次都会获取新的标识符，不能重用
+
+			GraphProto 模板 = new()
+			{
+				Input = { Enumerable.Union(计算图.Input, 拆分长度.计算图.Input) },
+				Initializer = { Enumerable.Union(计算图.Initializer, 拆分长度.计算图.Initializer) },
+				Node = { Enumerable.Union(计算图.Node, 拆分长度.计算图.Node),new NodeProto()
 				{
-					Name = "axis",
-					Type = AttributeProto.Types.AttributeType.Int,
-					I = 轴
-				}
-			], 拆分个数);
+					OpType ="Split",
+					Input = { 计算图.Name,拆分长度.计算图.Name },
+					Output = { 变量名 },
+					Attribute = {new AttributeProto()
+					{
+						Name = "axis",
+						Type = AttributeProto.Types.AttributeType.Int,
+						I = 轴
+					} }
+				} }
+			};
+			foreach (string 名称 in 变量名)
+			{
+				GraphProto 实例 = 模板.Clone();
+				实例.Name = 名称;
+				yield return new(实例);
+			}
 		}
 	}
 	class 输出变量:变量
@@ -270,10 +285,11 @@ namespace Onnx
 			}
 		}
 		//仅需传入所有输出变量即可生成最小计算模型。输出图的所有输出变量名与输入的所有输出变量名相同，但重复的输出变量名只保留一个，且不保证顺序。
-		public static GraphProto 生成计算图(IEnumerable<输出变量> 所有输出)
+		public static GraphProto 生成计算图(string 名称, IEnumerable<输出变量> 所有输出)
 		{
 			return new()
 			{
+				Name = 名称,
 				Input = { 所有输出.SelectMany(输出 => 输出.计算图.Input).Distinct() },
 				Output = { 所有输出.SelectMany(输出 => 输出.计算图.Output).Distinct() },
 				Initializer = { 所有输出.SelectMany(输出 => 输出.计算图.Initializer).Distinct() },
@@ -281,9 +297,19 @@ namespace Onnx
 			};
 		}
 		//仅需传入所有输出变量即可生成最小计算模型。输出图的所有输出变量名与输入的所有输出变量名相同，但重复的输出变量名只保留一个，且不保证顺序。
+		public static GraphProto 生成计算图(IEnumerable<输出变量> 所有输出)
+		{
+			return 生成计算图(分配标识符(), 所有输出);
+		}
+		//仅需传入所有输出变量即可生成最小计算模型。输出图的所有输出变量名与输入的所有输出变量名相同，但重复的输出变量名只保留一个，且不保证顺序。
+		public static GraphProto 生成计算图(string 名称, params 输出变量[] 所有输出)
+		{
+			return 生成计算图(名称, 所有输出.AsEnumerable());
+		}
+		//仅需传入所有输出变量即可生成最小计算模型。输出图的所有输出变量名与输入的所有输出变量名相同，但重复的输出变量名只保留一个，且不保证顺序。
 		public static GraphProto 生成计算图(params 输出变量[] 所有输出)
 		{
-			return 生成计算图(所有输出);
+			return 生成计算图(分配标识符(), 所有输出.AsEnumerable());
 		}
 	}
 	class 输入变量(string 输入名称, TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸) : 变量(new()
@@ -400,7 +426,7 @@ namespace Onnx
 			return new(计算图);
 		}
 		//取得和此中间变量同名的输出变量。那之后，此中间变量将不再可用。
-		public 输出变量 Identity(TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
+		public override 输出变量 Identity(TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
 		{
 			计算图.Output.Add(new ValueInfoProto()
 			{

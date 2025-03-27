@@ -32,39 +32,10 @@ namespace 幻影坦克MAUI
 			return 输出位图.Bytes;
 		}
 		private static readonly string 模型路径 = Path.Combine(FileSystem.CacheDirectory, "模型v1.onnx");
-		private static 中间变量 范围放缩(变量 张量)
-		{
-			中间变量 全局最小 = 张量.Min();
-			中间变量 全局最大 = 张量.Max();
-			输入变量 最小输入 = new(全局最小.名称, TensorProto.Types.DataType.Float, [1]);
-			输入变量 最大输入 = new(全局最大.名称, TensorProto.Types.DataType.Float, [1]);
-			输入变量 数组输入 = new(张量.名称, TensorProto.Types.DataType.Float, [-1, -1, -1, -1]);
-			中间变量 中间最大 = 变量.Where(最大输入 > 255f, 最大输入, 255f);
-			中间变量 中间最小 = 变量.Where(最小输入 < 0f, 最小输入, 0f);
-			//string 输出变量名 = 变量.分配标识符();
-			return 全局最小.IsInf(false, true).If
-			(
-				输出变量.生成计算图(最大输入.IsInf(true, false).If
-				(
-					输出变量.生成计算图(((((数组输入 / 255f - 0.5f) * MathF.PI).Atan() / MathF.PI + 0.5f) * 255f).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-					输出变量.生成计算图((65025f / (255f + 最大输入 - 数组输入)).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1]))
-				).Single().Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-				输出变量.生成计算图(最大输入.IsInf(true, false).If
-				(
-					输出变量.生成计算图((65025f / (最小输入 - 255f - 数组输入) + 255f).Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-					输出变量.生成计算图((最大输入 <= 255f & 最小输入 >= 0).If
-					(
-						输出变量.生成计算图(数组输入.Identity(变量.分配标识符(), TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-						输出变量.生成计算图((255f / (中间最大 - 中间最小) * (数组输入 - 中间最小)).Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1]))
-					).Single().Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1]))
-				).Single().Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1]))
-			).Single();
-		}
-		private SKData 预览图;
 #if DEBUG
-		private static void 验证模型(params 中间变量[]要验证的输出)
+		private static void 验证模型(params 变量[] 要验证的输出)
 		{
-			GraphProto 计算图 = 输出变量.生成计算图(from 中间变量 V in 要验证的输出 select V.Identity(TensorProto.Types.DataType.Uint8, [-1, -1, -1, -1]));
+			GraphProto 计算图 = 输出变量.生成计算图(from 变量 V in 要验证的输出 select V.Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
 			ModelProto 模型 = new()
 			{
 				IrVersion = 10,
@@ -75,6 +46,44 @@ namespace 幻影坦克MAUI
 			new InferenceSession(模型.ToByteArray());
 		}
 #endif
+		private static 中间变量 范围放缩(变量 张量)
+		{
+			中间变量 全局最小 = 张量.Min();
+			中间变量 全局最大 = 张量.Max();
+			输入变量 最小输入 = new(全局最小.名称, TensorProto.Types.DataType.Float, [1]);
+			输入变量 最大输入 = new(全局最大.名称, TensorProto.Types.DataType.Float, [1]);
+			输入变量 数组输入 = new(张量.名称, TensorProto.Types.DataType.Float, [-1, -1, -1, -1]);
+			中间变量 中间最大 = 变量.Where(最大输入 > 255f, 最大输入, 255f);
+			中间变量 中间最小 = 变量.Where(最小输入 < 0f, 最小输入, 0f);
+			验证模型(最大输入.IsInf(true, false).If
+				(
+					输出变量.生成计算图(((((数组输入 / 255f - 0.5f) * MathF.PI).Atan() / MathF.PI + 0.5f) * 255f).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+					输出变量.生成计算图((65025f / (255f + 最大输入 - 数组输入)).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+					最大输入, 数组输入
+				).Single());
+			return 全局最小.IsInf(false, true).If
+			(
+				输出变量.生成计算图(最大输入.IsInf(true, false).If
+				(
+					输出变量.生成计算图(((((数组输入 / 255f - 0.5f) * MathF.PI).Atan() / MathF.PI + 0.5f) * 255f).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+					输出变量.生成计算图((65025f / (255f + 最大输入 - 数组输入)).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+					最大输入,数组输入
+				).Single().Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+				输出变量.生成计算图(最大输入.IsInf(true, false).If
+				(
+					输出变量.生成计算图((65025f / (最小输入 - 255f - 数组输入) + 255f).Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+					输出变量.生成计算图((最大输入 <= 255f & 最小输入 >= 0).If
+					(
+						输出变量.生成计算图(数组输入.Identity(变量.分配标识符(), TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+						输出变量.生成计算图((255f / (中间最大 - 中间最小) * (数组输入 - 中间最小)).Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+						最大输入,最小输入, 数组输入
+					).Single().Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+					最大输入,最小输入,数组输入
+				).Single().Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
+				全局最大,全局最小,张量
+			).Single();
+		}
+		private SKData 预览图;
 		private static byte[] 更新模型会话(long 输出宽度,long 输出高度)
 		{
 			中间变量 表里图 = new 输入变量("表里图", TensorProto.Types.DataType.Uint8, [4, -1, -1, 2]).Cast(TensorProto.Types.DataType.Float);
@@ -87,7 +96,7 @@ namespace 幻影坦克MAUI
 			中间变量 加权背景差 = 背景色 * 三色权重;
 			中间变量[] 表里图拆分 = [.. 表里图.Split(3, 2, new 常量([1, 1]))];
 			表里图 = (加权背景差 * 三色权重 * (表里图拆分[0] - 表里图拆分[1])).ReduceSum(0) / (加权背景差 * 加权背景差).Sum();
-			表里图 = 变量.Where(表里图.IsNaN(), 0, 表里图) * 背景色;
+			表里图 = 变量.Where(表里图.IsNaN(), 0f, 表里图) * 背景色;
 			中间变量 表里色和 = 表里图拆分[0] + 表里图拆分[1];
 			表里色和 = 范围放缩(变量.Concat(3, (表里色和 + 表里图) / 2f, (表里色和 - 表里图) / 2f));
 			表里图拆分 = [.. 表里色和.Split(3, 2, new 常量([1, 1]))];
