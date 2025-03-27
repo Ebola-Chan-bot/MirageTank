@@ -35,32 +35,44 @@ namespace Onnx
 			});
 			return new(计算图);
 		}
+		private static byte 标识符计数 = 0;
+		public static string 分配标识符()
+		{
+			return "_埃博拉酱_" + 标识符计数++;
+		}
 		public static IEnumerable<中间变量> 运算(string 运算名称, IEnumerable<变量> 输入, IEnumerable<AttributeProto> 特性, int 输出个数)
 		{
-			IEnumerable<string> 变量名 = Enumerable.Range(0, 输出个数).Select(_ => Guid.NewGuid().ToString());
-			return 变量名.Select(名称 => new 中间变量(new()
+			string[] 变量名 = Enumerable.Range(0, 输出个数).Select(_ => 分配标识符()).ToArray();
+			//必须先ToArray确定下来，不能保留IEnumerable，否则每次都会获取新的标识符，不能重用
+
+			GraphProto 模板 = new()
 			{
-				Name = 名称,
 				Input = { 输入.SelectMany(值 => 值.计算图.Input).Distinct() },
 				Initializer = { 输入.SelectMany(值 => 值.计算图.Initializer).Distinct() },
-				Node = { 输入.SelectMany(值 => 值.计算图.Node),new NodeProto()
+				Node = { 输入.SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
 				{
 					OpType = 运算名称,
 					Input = { 输入.Select(值=>值.计算图.Name) },
 					Output = { 变量名 },
 					Attribute = { 特性 }
 				} }
-			}));
+			};
+			foreach (string 名称 in 变量名)
+			{
+				GraphProto 实例 = 模板.Clone();
+				实例.Name = 名称;
+				yield return new(实例);
+			}
 		}
 		public static 中间变量 运算(string 运算名称, IEnumerable<变量> 输入, IEnumerable<AttributeProto> 特性)
 		{
-			string 变量名 = Guid.NewGuid().ToString();
+			string 变量名 = 分配标识符();
 			return new(new()
 			{
 				Name = 变量名,
 				Input = { 输入.SelectMany(值 => 值.计算图.Input).Distinct() },
 				Initializer = { 输入.SelectMany(值 => 值.计算图.Initializer).Distinct() },
-				Node = { 输入.SelectMany(值 => 值.计算图.Node),new NodeProto()
+				Node = { 输入.SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
 				{
 					OpType = 运算名称,
 					Input = { 输入.Select(值=>值.计算图.Name) },
@@ -71,13 +83,13 @@ namespace Onnx
 		}
 		public static 中间变量 运算(string 运算名称, IEnumerable<变量> 输入)
 		{
-			string 变量名 = Guid.NewGuid().ToString();
+			string 变量名 = 分配标识符();
 			return new(new()
 			{
 				Name = 变量名,
 				Input = { 输入.SelectMany(值 => 值.计算图.Input).Distinct() },
 				Initializer = { 输入.SelectMany(值 => 值.计算图.Initializer).Distinct() },
-				Node = { 输入.SelectMany(值 => 值.计算图.Node),new NodeProto()
+				Node = { 输入.SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
 				{
 					OpType = 运算名称,
 					Input = { 输入.Select(值=>值.计算图.Name) },
@@ -159,6 +171,7 @@ namespace Onnx
 				}
 			]);
 		}
+		//两个子图的输出数量必须相同
 		public IEnumerable<中间变量> If(GraphProto 如果真, GraphProto 如果假)
 		{
 			return 运算("If", [this],
@@ -230,7 +243,18 @@ namespace Onnx
 		{
 			return 运算("ReduceMean", [this, 轴]);
 		}
-
+		public IEnumerable<中间变量> Split(int 轴, int 拆分个数, 变量 拆分长度)
+		{
+			return 运算("Split", [this, 拆分长度],
+			[
+				new()
+				{
+					Name = "axis",
+					Type = AttributeProto.Types.AttributeType.Int,
+					I = 轴
+				}
+			], 拆分个数);
+		}
 	}
 	class 输出变量:变量
 	{
@@ -245,20 +269,21 @@ namespace Onnx
 				计算图.Name = value;
 			}
 		}
-		//仅需传入所有输出变量即可生成最小计算模型
-		public static GraphProto 生成计算图(params 输出变量[] 所有输出)
+		//仅需传入所有输出变量即可生成最小计算模型。输出图的所有输出变量名与输入的所有输出变量名相同，但重复的输出变量名只保留一个，且不保证顺序。
+		public static GraphProto 生成计算图(IEnumerable<输出变量> 所有输出)
 		{
-			GraphProto 返回值 = new()
+			return new()
 			{
 				Input = { 所有输出.SelectMany(输出 => 输出.计算图.Input).Distinct() },
 				Output = { 所有输出.SelectMany(输出 => 输出.计算图.Output).Distinct() },
 				Initializer = { 所有输出.SelectMany(输出 => 输出.计算图.Initializer).Distinct() },
+				Node = { 所有输出.SelectMany(输出 => 输出.计算图.Node).Distinct() },
 			};
-			foreach (输出变量 输出 in 所有输出)
-				foreach (NodeProto 节点 in 输出.计算图.Node)
-					if (!返回值.Node.Contains(节点))
-						返回值.Node.Add(节点);
-			return 返回值;
+		}
+		//仅需传入所有输出变量即可生成最小计算模型。输出图的所有输出变量名与输入的所有输出变量名相同，但重复的输出变量名只保留一个，且不保证顺序。
+		public static GraphProto 生成计算图(params 输出变量[] 所有输出)
+		{
+			return 生成计算图(所有输出);
 		}
 	}
 	class 输入变量(string 输入名称, TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸) : 变量(new()
@@ -294,42 +319,50 @@ namespace Onnx
 		})
 		{ }
 		static readonly Dictionary<object, 常量> 常量表 = [];
+		public 常量(IEnumerable<long> 值, IEnumerable<long> 各维尺寸) : base(new Func<GraphProto>(() =>
+		{
+			string 名称 = 分配标识符();
+			return new()
+			{
+				Name = 名称,
+				Initializer = { new TensorProto()
+				{
+					Name =名称,
+					Dims = { 各维尺寸 },
+					DataType = (int)TensorProto.Types.DataType.Int64,
+					Int64Data = { 值 }
+				} }
+			};
+		})())
+		{ }
+		public 常量(IEnumerable<long> 值) : this(值, [值.LongCount()])
+		{ }
 		public static implicit operator 常量(long 值)
 		{
-			if (常量表.ContainsKey(值))
-				return 常量表[值];
-			return 常量表[值] = new(new TensorProto()
-			{
-				Name = Guid.NewGuid().ToString(),
-				Dims = { 1 },
-				DataType = (int)TensorProto.Types.DataType.Int64,
-				Int64Data = { 值 }
-			});
+			return 常量表.ContainsKey(值) ? 常量表[值] : (常量表[值] = new([值]));
 		}
+		public 常量(IEnumerable<float> 值, IEnumerable<long> 各维尺寸) : base(new Func<GraphProto>(() =>
+		{
+			string 名称 = 分配标识符();
+			return new()
+			{
+				Name = 名称,
+				Initializer = { new TensorProto()
+				{
+					Name =名称,
+					Dims = { 各维尺寸 },
+					DataType = (int)TensorProto.Types.DataType.Float,
+					FloatData = { 值 }
+				} }
+			};
+		})())
+		{ }
+		public 常量(IEnumerable<float> 值) : this(值, [值.LongCount()])
+		{ }
 		public static implicit operator 常量(float 值)
 		{
-			if (常量表.ContainsKey(值))
-				return 常量表[值];
-			return 常量表[值] = new(new TensorProto()
-			{
-				Name = Guid.NewGuid().ToString(),
-				Dims = { 1 },
-				DataType = (int)TensorProto.Types.DataType.Float,
-				FloatData = { 值 }
-			});
+			return 常量表.ContainsKey(值) ? 常量表[值] : (常量表[值] = new([值]));
 		}
-		public 常量(IEnumerable<float> 值, IEnumerable<long> 各维尺寸) : base(new()
-		{
-			Name = Guid.NewGuid().ToString(),
-			Initializer = { new TensorProto()
-			{
-				Name = Guid.NewGuid().ToString(),
-				Dims = { 各维尺寸 },
-				DataType = (int)TensorProto.Types.DataType.Float,
-				FloatData = { 值 }
-			} }
-		})
-		{ }
 		public override string 名称
 		{
 			get => 计算图.Name;
@@ -346,7 +379,6 @@ namespace Onnx
 		internal 中间变量(GraphProto 计算图) : base(计算图) { }
 		public override 输出变量 Identity(string 输出名称, TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
 		{
-			计算图.Name = 输出名称;
 			计算图.Output.Add(new ValueInfoProto()
 			{
 				Name = 输出名称,
@@ -360,8 +392,11 @@ namespace Onnx
 				}
 			});
 			RepeatedField<string> 最终输出 = 计算图.Node.Last().Output;
-			最终输出.Remove(计算图.Name);
-			最终输出.Add(输出名称);
+			最终输出[最终输出.IndexOf(计算图.Name)] = 输出名称;
+
+			//计算图.Name必须最后设置，因为前面还用到原始值
+			计算图.Name = 输出名称;
+
 			return new(计算图);
 		}
 		//取得和此中间变量同名的输出变量。那之后，此中间变量将不再可用。
