@@ -47,6 +47,7 @@ namespace 幻影坦克MAUI
 			return 要验证的输出[0];
 		}
 #endif
+		static List<输出变量> 调试收集器 = new();
 		private static 中间变量 范围放缩(变量 张量)
 		{
 			中间变量 全局最小 = 张量.ReduceMin();
@@ -71,8 +72,9 @@ namespace 幻影坦克MAUI
 			).Single();
 		}
 		private SKData 预览图;
-		private static byte[] 更新模型会话(long 输出宽度,long 输出高度)
+		private static byte[] 更新模型会话()
 		{
+			调试收集器.Clear();
 			中间变量 表里图 = new 输入变量("表里图", TensorProto.Types.DataType.Uint8, [4, -1, -1, 2]).Cast(TensorProto.Types.DataType.Float);
 			中间变量 背景色 = new 输入变量("背景色", TensorProto.Types.DataType.Uint8, [3, 1, 1, 2]).Cast(TensorProto.Types.DataType.Float);
 			中间变量[] 表里背景色 = [.. 背景色.Split(3, 2, new 常量([1, 1]))];
@@ -91,11 +93,12 @@ namespace 幻影坦克MAUI
 			颜色透明通道[1] = 变量.Where(颜色透明通道[1].IsNaN(), 255f, 颜色透明通道[1]).ReduceMean(0);
 			背景色 = 表里背景色[0] + 表里背景色[1];
 			表里图 = 范围放缩((255f * (表里图拆分[0] + 表里图拆分[1] - 背景色) / 颜色透明通道[1] + 背景色) / 2f);
+			调试收集器.Add(变量.Concat(0, 表里图, 颜色透明通道[1]).Cast(TensorProto.Types.DataType.Uint8).Identity("幻影坦克", TensorProto.Types.DataType.Uint8, [4, -1, -1]));
 			ModelProto 模型原型 = new()
 			{
 				IrVersion = 10,
 				OpsetImport = { new OperatorSetIdProto() { Version = 22 } },
-				Graph = 输出变量.生成计算图(变量.Concat(0, 表里图, 颜色透明通道[1]).Cast(TensorProto.Types.DataType.Uint8).Identity("幻影坦克", TensorProto.Types.DataType.Uint8, [4, 输出宽度, 输出高度]))
+				Graph = 输出变量.生成计算图(调试收集器)
 			};
 			模型原型.WriteToFile(模型路径);
 			return 模型原型.ToByteArray();
@@ -131,6 +134,7 @@ namespace 幻影坦克MAUI
 			InferenceSession 推理会话;
 			try
 			{
+#if !DEBUG
 				if (File.Exists(模型路径))
 					try
 					{
@@ -138,10 +142,11 @@ namespace 幻影坦克MAUI
 					}
 					catch (OnnxRuntimeException)
 					{
-						推理会话 = new(更新模型会话(输出宽度, 输出高度), 会话选项);
+						推理会话 = new(更新模型会话(), 会话选项);
 					}
 				else
-					推理会话 = new(更新模型会话(输出宽度, 输出高度), 会话选项);
+#endif
+				推理会话 = new(更新模型会话(), 会话选项);
 			}
 			catch (OnnxRuntimeException 异常)
 			{
@@ -150,15 +155,19 @@ namespace 幻影坦克MAUI
 				return;
 			}
 			SKBitmap 幻影坦克 = new();
-			幻影坦克.InstallPixels(new SKImageInfo(输出宽度, 输出高度, SKColorType.Rgba8888, SKAlphaType.Unpremul), SKData.CreateCopy(推理会话.Run(new RunOptions(), new Dictionary<string, OrtValue>
+			IDisposableReadOnlyCollection<OrtValue> 所有输出 = 推理会话.Run(new RunOptions(), new Dictionary<string, OrtValue>
 			{
 				{ "表里图",OrtValue.CreateTensorValueFromMemory(位图转字节(表图对象, 输出高度, 输出宽度, HiddenColor).Concat(位图转字节(里图对象,输出高度,输出宽度,SurfaceColor)).ToArray(),[4,输出宽度,输出高度,2]) },
-				{ "背景色",OrtValue.CreateTensorValueFromMemory<byte>(
+				{ "背景色",OrtValue.CreateTensorValueFromMemory(
 					[
 						(byte)(SurfaceColor.PickedColor.Red*255),(byte)(SurfaceColor.PickedColor.Green*255),(byte)(SurfaceColor.PickedColor.Blue*255),
 						(byte)(HiddenColor.PickedColor.Red*255),(byte)(HiddenColor.PickedColor.Green*255),(byte)(HiddenColor.PickedColor.Blue*255)
 					],[3,1,1,2]) }
-			}, ["幻影坦克"]).Single().GetTensorDataAsSpan<byte>()).Data);
+			}, ["幻影坦克", "调试输出A", "调试输出B"]);
+			ReadOnlySpan<byte> ROS = 所有输出[0].GetTensorDataAsSpan<byte>();
+			ReadOnlySpan<float> 调试输出A = 所有输出[1].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> 调试输出B = 所有输出[2].GetTensorDataAsSpan<float>();
+			幻影坦克.InstallPixels(new SKImageInfo(输出宽度, 输出高度, SKColorType.Rgba8888, SKAlphaType.Unpremul), SKData.CreateCopy(ROS).Data);
 			预览图 = SKImage.FromBitmap(幻影坦克).Encode(SKEncodedImageFormat.Png, 100);
 			明场预览.Source = ImageSource.FromStream(() => 预览图.AsStream());
 			暗场预览.Source = ImageSource.FromStream(() => 预览图.AsStream());
