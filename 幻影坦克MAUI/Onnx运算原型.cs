@@ -2,6 +2,7 @@
 
 namespace Onnx
 {
+	//所有维度参数的索引顺序均为从最高维到最低维。最低维是在内存中连续排列的维度。
 	abstract class 变量(GraphProto 计算图)
 	{
 		protected GraphProto? 计算图 = 计算图;
@@ -125,13 +126,26 @@ namespace Onnx
 		{
 			return 运算("Div", [被除数, 除数]);
 		}
+		private static readonly AttributeProto[] 空轴不操作 = [new()
+		{
+			Name = "noop_with_empty_axes",
+			Type = AttributeProto.Types.AttributeType.Int,
+			I = 1
+		}];
+		//计算本张量沿指定轴规约的和
 		public 中间变量 ReduceSum(变量 轴)
 		{
-			return 运算("ReduceSum", [this, 轴]);
+			return 运算("ReduceSum", [this, 轴], 空轴不操作);
 		}
-		public 中间变量 Sum()
+		//计算本张量所有元素的和
+		public 中间变量 ReduceSum()
 		{
-			return 运算("Sum", [this]);
+			return 运算("ReduceSum", [this]);
+		}
+		//计算所有输入张量之间的求和
+		public static 中间变量 Sum(params 变量[]输入)
+		{
+			return 运算("Sum", 输入);
 		}
 		public 中间变量 IsNaN()
 		{
@@ -146,12 +160,6 @@ namespace Onnx
 		{
 			return 运算("ReduceMin", [this]);
 		}
-		private static readonly AttributeProto[] 空轴不操作 = [new()
-		{
-			Name = "noop_with_empty_axes",
-			Type = AttributeProto.Types.AttributeType.Int,
-			I = 1
-		}];
 		//返回该张量沿指定轴规约的最小值
 		public 中间变量 ReduceMin(变量 轴)
 		{

@@ -75,16 +75,27 @@ namespace 幻影坦克MAUI
 		private static byte[] 更新模型会话()
 		{
 			调试收集器.Clear();
-			中间变量 表里图 = new 输入变量("表里图", TensorProto.Types.DataType.Uint8, [4, -1, -1, 2]).Cast(TensorProto.Types.DataType.Float);
-			中间变量 背景色 = new 输入变量("背景色", TensorProto.Types.DataType.Uint8, [3, 1, 1, 2]).Cast(TensorProto.Types.DataType.Float);
+			中间变量 表里图 = new 输入变量("表里图", TensorProto.Types.DataType.Uint8, [2,-1,-1,4]).Cast(TensorProto.Types.DataType.Float);
+			中间变量 背景色 = new 输入变量("背景色", TensorProto.Types.DataType.Uint8, [2,1,1,3]).Cast(TensorProto.Types.DataType.Float);
 			中间变量[] 表里背景色 = [.. 背景色.Split(3, 2, new 常量([1, 1]))];
+			调试收集器.Add(表里背景色[0].Identity().Identity("10", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
+			调试收集器.Add(表里背景色[1].Identity().Identity("11", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
 			中间变量[] 颜色透明通道 = [.. 表里图.Split(0, 2, new 常量([3, 1]))];
 			表里图 = ((255f - 颜色透明通道[1]) * 背景色 + 颜色透明通道[1] * 颜色透明通道[0]) / 255f;
 			背景色 = 表里背景色[0] - 表里背景色[1];
 			常量 三色权重 = new([0.299f, 0.587f, 0.114f], [3,1,1,1]);
+			调试收集器.Add(背景色.Identity().Identity("8", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
+			调试收集器.Add(三色权重.Identity().Identity("9", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
 			中间变量 加权背景差 = 背景色 * 三色权重;
 			中间变量[] 表里图拆分 = [.. 表里图.Split(3, 2, new 常量([1, 1]))];
-			表里图 = (加权背景差 * 三色权重 * (表里图拆分[0] - 表里图拆分[1])).ReduceSum(0) / (加权背景差 * 加权背景差).Sum();
+			调试收集器.Add(加权背景差.Identity().Identity("1", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
+			调试收集器.Add(三色权重.Identity().Identity("2", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
+			调试收集器.Add(表里图拆分[0].Identity().Identity("3", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
+			调试收集器.Add(表里图拆分[1].Identity().Identity("4", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
+			调试收集器.Add((加权背景差 * 三色权重 * (表里图拆分[0] - 表里图拆分[1])).ReduceSum(0).Identity("6", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
+			调试收集器.Add((加权背景差 * 加权背景差).ReduceSum().Identity("7", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
+			表里图 = (加权背景差 * 三色权重 * (表里图拆分[0] - 表里图拆分[1])).ReduceSum(0) / (加权背景差 * 加权背景差).ReduceSum();
+			调试收集器.Add(表里图.Identity().Identity("5", TensorProto.Types.DataType.Float, [-1, -1, -1, -1]));
 			表里图 = 变量.Where(表里图.IsNaN(), 0f, 表里图) * 背景色;
 			中间变量 表里色和 = 表里图拆分[0] + 表里图拆分[1];
 			表里色和 = 范围放缩(变量.Concat(3, (表里色和 + 表里图) / 2f, (表里色和 - 表里图) / 2f));
@@ -163,10 +174,19 @@ namespace 幻影坦克MAUI
 						(byte)(SurfaceColor.PickedColor.Red*255),(byte)(SurfaceColor.PickedColor.Green*255),(byte)(SurfaceColor.PickedColor.Blue*255),
 						(byte)(HiddenColor.PickedColor.Red*255),(byte)(HiddenColor.PickedColor.Green*255),(byte)(HiddenColor.PickedColor.Blue*255)
 					],[3,1,1,2]) }
-			}, ["幻影坦克", "调试输出A", "调试输出B"]);
+			}, ["幻影坦克", "1","2","3","4","5","6","7","8","9","10","11"]);
 			ReadOnlySpan<byte> ROS = 所有输出[0].GetTensorDataAsSpan<byte>();
-			ReadOnlySpan<float> 调试输出A = 所有输出[1].GetTensorDataAsSpan<float>();
-			ReadOnlySpan<float> 调试输出B = 所有输出[2].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D1 = 所有输出[1].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D2 = 所有输出[2].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D3 = 所有输出[3].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D4 = 所有输出[4].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D5 = 所有输出[5].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D6 = 所有输出[6].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D7 = 所有输出[7].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D8 = 所有输出[8].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D9 = 所有输出[9].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D10 = 所有输出[10].GetTensorDataAsSpan<float>();
+			ReadOnlySpan<float> D11 = 所有输出[11].GetTensorDataAsSpan<float>();
 			幻影坦克.InstallPixels(new SKImageInfo(输出宽度, 输出高度, SKColorType.Rgba8888, SKAlphaType.Unpremul), SKData.CreateCopy(ROS).Data);
 			预览图 = SKImage.FromBitmap(幻影坦克).Encode(SKEncodedImageFormat.Png, 100);
 			明场预览.Source = ImageSource.FromStream(() => 预览图.AsStream());
