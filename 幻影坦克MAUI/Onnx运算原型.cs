@@ -11,7 +11,6 @@ namespace Onnx
 		//使用此方法取得输出变量后，原来的变量将不再可用
 		public virtual 输出变量 Identity(string 输出名称, TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
 		{
-			计算图.Name = 输出名称;
 			计算图.Output.Add(new ValueInfoProto()
 			{
 				Name = 输出名称,
@@ -30,6 +29,10 @@ namespace Onnx
 				Input = { 计算图.Name },
 				Output = { 输出名称 }
 			});
+
+			计算图.Name = 输出名称;
+			//必须最后修改，因为前面还用到原始值
+
 			return new(计算图);
 		}
 		//使用此方法取得输出变量后，原来的变量将不再可用
@@ -37,9 +40,11 @@ namespace Onnx
 		{
 			return Identity(分配标识符(), 数据类型, 各维尺寸);
 		}
-		private static byte 标识符计数 = 0;
+		public static byte 标识符计数 = 0;
 		public static string 分配标识符()
 		{
+			if (标识符计数 == 62)
+				标识符计数 = 62;
 			return "_埃博拉酱_" + 标识符计数++;
 		}
 		public static 中间变量 运算(string 运算名称, IEnumerable<变量> 输入, IEnumerable<AttributeProto> 特性)
@@ -149,17 +154,19 @@ namespace Onnx
 				}
 			]);
 		}
-		//两个子图的输出数量必须相同，此外还需要提供所有名称与子图输入匹配的，此算子所在的直接父图的输入变量
-		public IEnumerable<中间变量> If(GraphProto 如果真, GraphProto 如果假, params 变量[] 输入变量)
+		//两个条件输出数目必须相同。将根据条件返回其中一组输出，另一组不会被实际计算。
+		public IEnumerable<中间变量> If(IEnumerable<输出变量> 如果真, IEnumerable<输出变量> 如果假)
 		{
-			string[] 变量名 = [.. Enumerable.Range(0, 如果真.Output.Count).Select(_ => 分配标识符())];
+			string[] 变量名 = [.. 如果真.Select(_ => 分配标识符())];
 			//必须先ToArray确定下来，不能保留IEnumerable，否则每次都会获取新的标识符，不能重用
 
+			IEnumerable<NodeProto> 所有真节点 = 如果真.SelectMany(值 => 值.计算图.Node);
+			IEnumerable<NodeProto> 所有假节点 = 如果假.SelectMany(值 => 值.计算图.Node);
 			GraphProto 模板 = new()
 			{
-				Input = {输入变量.Append(this).SelectMany(值 => 值.计算图.Input).Distinct() },
-				Initializer = { 输入变量.Append(this).SelectMany(值 => 值.计算图.Initializer).Distinct() },
-				Node = { 输入变量.Append(this).SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
+				Input = {如果真.Concat(如果假).Append(this).SelectMany(值 => 值.计算图.Input).Distinct() },
+				Initializer = { 如果真.Concat(如果假).Append(this).SelectMany(值 => 值.计算图.Initializer).Distinct() },
+				Node = { Enumerable.Intersect(所有真节点,所有假节点).Union(计算图.Node),new NodeProto()
 				{
 					OpType = "If",
 					Input = { 计算图.Name },
@@ -170,13 +177,23 @@ namespace Onnx
 						{
 							Name = "then_branch",
 							Type = AttributeProto.Types.AttributeType.Graph,
-							G = 如果真
+							G = new ()
+							{
+								Name = "then_branch",
+								Output={ 如果真.SelectMany(值=>值.计算图.Output) },
+								Node = { 所有真节点.Except(所有假节点) }
+							}
 						},
 						new AttributeProto()
 						{
 							Name = "else_branch",
 							Type = AttributeProto.Types.AttributeType.Graph,
-							G = 如果假
+							G = new()
+							{
+								Name = "else_branch",
+								Output={ 如果假.SelectMany(值=>值.计算图.Output) },
+								Node = { 所有假节点.Except(所有真节点) }
+							}
 						}
 					}
 				} }
@@ -187,6 +204,11 @@ namespace Onnx
 				实例.Name = 名称;
 				yield return new(实例);
 			}
+		}
+		//两个条件输出数目必须相同。将根据条件返回其中一组输出，另一组不会被实际计算。
+		public IEnumerable<中间变量> If(Func<IEnumerable<输出变量>> 如果真, Func<IEnumerable<输出变量>> 如果假)
+		{
+			return If(如果真(), 如果假());
 		}
 		public static 中间变量 Concat(int 轴, params 变量[] 输入)
 		{

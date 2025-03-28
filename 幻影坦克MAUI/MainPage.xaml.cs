@@ -55,32 +55,22 @@ namespace 幻影坦克MAUI
 			输入变量 数组输入 = new(张量.名称, TensorProto.Types.DataType.Float, [-1, -1, -1, -1]);
 			中间变量 中间最大 = 变量.Where(最大输入 > 255f, 最大输入, 255f);
 			中间变量 中间最小 = 变量.Where(最小输入 < 0f, 最小输入, 0f);
-			验证模型(最大输入.IsInf(true, false).If
-				(
-					输出变量.生成计算图(((((数组输入 / 255f - 0.5f) * MathF.PI).Atan() / MathF.PI + 0.5f) * 255f).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-					输出变量.生成计算图((65025f / (255f + 最大输入 - 数组输入)).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-					最大输入, 数组输入
-				).Single());
 			return 全局最小.IsInf(false, true).If
 			(
-				输出变量.生成计算图(最大输入.IsInf(true, false).If
+				[全局最大.IsInf(true,false).If
 				(
-					输出变量.生成计算图(((((数组输入 / 255f - 0.5f) * MathF.PI).Atan() / MathF.PI + 0.5f) * 255f).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-					输出变量.生成计算图((65025f / (255f + 最大输入 - 数组输入)).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-					最大输入,数组输入
-				).Single().Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-				输出变量.生成计算图(最大输入.IsInf(true, false).If
+					[((((数组输入 / 255f - 0.5f) * MathF.PI).Atan() / MathF.PI + 0.5f) * 255f).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])],
+					[(65025f / (255f + 最大输入 - 数组输入)).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])]
+				).Single().Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])],
+				[全局最大.IsInf(true, false).If
 				(
-					输出变量.生成计算图((65025f / (最小输入 - 255f - 数组输入) + 255f).Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-					输出变量.生成计算图((最大输入 <= 255f & 最小输入 >= 0).If
+					[(65025f / (最小输入 - 255f - 数组输入) + 255f).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])],
+					[(最大输入 <= 255f & 最小输入 >= 0).If
 					(
-						输出变量.生成计算图(数组输入.Identity(变量.分配标识符(), TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-						输出变量.生成计算图((255f / (中间最大 - 中间最小) * (数组输入 - 中间最小)).Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-						最大输入,最小输入, 数组输入
-					).Single().Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-					最大输入,最小输入,数组输入
-				).Single().Identity( TensorProto.Types.DataType.Float, [-1, -1, -1, -1])),
-				全局最大,全局最小,张量
+						[数组输入.Identity(变量.分配标识符(), TensorProto.Types.DataType.Float, [-1, -1, -1, -1])],
+						[(255f / (中间最大 - 中间最小) * (数组输入 - 中间最小)).Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])]
+					).Single().Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])]
+				).Single().Identity(TensorProto.Types.DataType.Float, [-1, -1, -1, -1])]
 			).Single();
 		}
 		private SKData 预览图;
@@ -113,12 +103,20 @@ namespace 幻影坦克MAUI
 			模型原型.WriteToFile(模型路径);
 			return 模型原型.ToByteArray();
 		}
+		private static MemoryStream 流拷贝(Stream 源流)
+		{
+			MemoryStream 目标流 = new();
+			源流.CopyTo(目标流);
+			源流.Position = 0;
+			目标流.Position = 0;
+			return 目标流;
+		}
 		private void Generate_Clicked(object sender, EventArgs e)
 		{
-			SKBitmap 表图对象 = SKBitmap.Decode(表图流);
-			SKBitmap 里图对象 = SKBitmap.Decode(里图流);
+			SKBitmap 表图对象 = SKBitmap.Decode(流拷贝(表图流));
+			SKBitmap 里图对象 = SKBitmap.Decode(流拷贝(里图流));
 			int 输出高度 = Math.Max(表图对象.Height, 里图对象.Height);
-			int 输出宽度 = Math.Max(里图对象.Width, 里图对象.Width);
+			int 输出宽度 = Math.Max(表图对象.Width, 里图对象.Width);
 			SessionOptions 会话选项 = new();
 #if ANDROID
 			会话选项.AppendExecutionProvider_Nnapi();
@@ -134,17 +132,25 @@ namespace 幻影坦克MAUI
 			}
 #endif
 			InferenceSession 推理会话;
-			if (File.Exists(模型路径))
-				try
-				{
-					推理会话 = new(模型路径, 会话选项); 
-				}
-				catch (OnnxRuntimeException)
-				{
-					推理会话 = new(更新模型会话(输出宽度,输出高度), 会话选项);
-				}
-			else
-				推理会话 = new(更新模型会话(输出宽度,输出高度), 会话选项);
+			try
+			{
+				if (File.Exists(模型路径))
+					try
+					{
+						推理会话 = new(模型路径, 会话选项);
+					}
+					catch (OnnxRuntimeException)
+					{
+						推理会话 = new(更新模型会话(输出宽度, 输出高度), 会话选项);
+					}
+				else
+					推理会话 = new(更新模型会话(输出宽度, 输出高度), 会话选项);
+			}
+			catch (OnnxRuntimeException 异常)
+			{
+				变量.标识符计数 = 0;
+				return;
+			}
 			SKBitmap 幻影坦克 = new();
 			幻影坦克.InstallPixels(new SKImageInfo(输出宽度, 输出高度, SKColorType.Rgba8888, SKAlphaType.Unpremul), SKData.CreateCopy(推理会话.Run(new RunOptions(), new Dictionary<string, OrtValue>
 			{
@@ -159,18 +165,12 @@ namespace 幻影坦克MAUI
 			明场预览.Source = ImageSource.FromStream(() => 预览图.AsStream());
 			暗场预览.Source = ImageSource.FromStream(() => 预览图.AsStream());
 		}
-		private static ImageSource 拷贝流图源(Stream 源图流)
-		{
-			MemoryStream 内存流 = new();
-			源图流.CopyTo(内存流);
-			内存流.Position = 0;
-			源图流.Position = 0;
-			return ImageSource.FromStream(() => 内存流);
-		}
 		private async void ContentPage_Loaded(object sender, EventArgs e)
 		{
-			表图.Source = 拷贝流图源(表图流 = await FileSystem.OpenAppPackageFileAsync($"surface_raw.jpg"));
-			里图.Source = 拷贝流图源(里图流 = await FileSystem.OpenAppPackageFileAsync($"hidden_raw.jpg"));
+			表图流 = await FileSystem.OpenAppPackageFileAsync($"surface_raw.jpg");
+			里图流 = await FileSystem.OpenAppPackageFileAsync($"hidden_raw.jpg");
+			表图.Source = ImageSource.FromStream(() => 流拷贝(表图流));
+			里图.Source = ImageSource.FromStream(() => 流拷贝(里图流));
 		}
 		readonly PickOptions options = new()
 		{
@@ -181,13 +181,19 @@ namespace 幻影坦克MAUI
 		{
 			FileResult? result = await FilePicker.Default.PickAsync(options);
 			if (result != null)
-				表图.Source = 拷贝流图源(表图流 = await result.OpenReadAsync());
+			{
+				表图流 = await result.OpenReadAsync();
+				表图.Source = ImageSource.FromStream(() => 流拷贝(表图流));
+			}
 		}
 		private async void 里图_Tapped(object sender, TappedEventArgs e)
 		{
 			FileResult? result = await FilePicker.Default.PickAsync(options);
 			if (result != null)
-				里图.Source = 拷贝流图源(里图流 = await result.OpenReadAsync());
+			{
+				里图流 = await result.OpenReadAsync();
+				里图.Source = ImageSource.FromStream(() => 流拷贝(里图流));
+			}
 		}
 	}
 }
