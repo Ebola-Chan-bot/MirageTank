@@ -4,11 +4,11 @@ namespace Onnx
 {
 	abstract class 变量(GraphProto 计算图)
 	{
-		protected GraphProto 计算图 = 计算图;
+		protected GraphProto? 计算图 = 计算图;
 		//使用If子图时，需要设置变量名称，与子图的输入名称匹配
 		public abstract string 名称 { get; set; }
 
-		//使用此方法取得输出变量后，原来的变量将不再可用
+		//将当前变量转换为指定名称的输出变量。使用此方法取得输出变量后，原来的变量将不再可用
 		public virtual 输出变量 Identity(string 输出名称, TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
 		{
 			计算图.Output.Add(new ValueInfoProto()
@@ -33,32 +33,36 @@ namespace Onnx
 			计算图.Name = 输出名称;
 			//必须最后修改，因为前面还用到原始值
 
-			return new(计算图);
+			输出变量 返回值 = new(计算图);
+			计算图 = null;
+			return 返回值;
 		}
-		//使用此方法取得输出变量后，原来的变量将不再可用
+		//将当前变量转换为同名的输出变量。使用此方法取得输出变量后，原来的变量将不再可用
 		public virtual 输出变量 Identity(TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
 		{
 			return Identity(分配标识符(), 数据类型, 各维尺寸);
 		}
-		public static byte 标识符计数 = 0;
+		public static ushort 标识符计数 = 0;
 		public static string 分配标识符()
 		{
-			if (标识符计数 == 62)
-				标识符计数 = 62;
 			return "_埃博拉酱_" + 标识符计数++;
 		}
 		public static 中间变量 运算(string 运算名称, IEnumerable<变量> 输入, IEnumerable<AttributeProto> 特性)
 		{
 			string 变量名 = 分配标识符();
+
+			//IEnumerable重复访问不保证产生相同的值，必须先锁定
+			变量[] 锁定输入 = [.. 输入];
+
 			return new(new()
 			{
 				Name = 变量名,
-				Input = { 输入.SelectMany(值 => 值.计算图.Input).Distinct() },
-				Initializer = { 输入.SelectMany(值 => 值.计算图.Initializer).Distinct() },
-				Node = { 输入.SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
+				Input = { 锁定输入.SelectMany(值 => 值.计算图.Input).Distinct() },
+				Initializer = { 锁定输入.SelectMany(值 => 值.计算图.Initializer).Distinct() },
+				Node = { 锁定输入.SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
 				{
 					OpType = 运算名称,
-					Input = { 输入.Select(值=>值.计算图.Name) },
+					Input = { 锁定输入.Select(值=>值.计算图.Name) },
 					Output = { 变量名 },
 					Attribute = { 特性 }
 				} }
@@ -67,18 +71,27 @@ namespace Onnx
 		public static 中间变量 运算(string 运算名称, IEnumerable<变量> 输入)
 		{
 			string 变量名 = 分配标识符();
+
+			//IEnumerable重复访问不保证产生相同的值，必须先锁定
+			变量[] 锁定输入 = [.. 输入];
+
 			return new(new()
 			{
 				Name = 变量名,
-				Input = { 输入.SelectMany(值 => 值.计算图.Input).Distinct() },
-				Initializer = { 输入.SelectMany(值 => 值.计算图.Initializer).Distinct() },
-				Node = { 输入.SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
+				Input = { 锁定输入.SelectMany(值 => 值.计算图.Input).Distinct() },
+				Initializer = { 锁定输入.SelectMany(值 => 值.计算图.Initializer).Distinct() },
+				Node = { 锁定输入.SelectMany(值 => 值.计算图.Node).Distinct(),new NodeProto()
 				{
 					OpType = 运算名称,
-					Input = { 输入.Select(值=>值.计算图.Name) },
+					Input = { 锁定输入.Select(值=>值.计算图.Name) },
 					Output = { 变量名 }
 				} }
 			});
+		}
+		//将当前变量拷贝到一个新的中间变量
+		public 中间变量 Identity()
+		{
+			return 运算("Identity", [this]);
 		}
 		public 中间变量 Cast(TensorProto.Types.DataType 数据类型)
 		{
@@ -128,13 +141,41 @@ namespace Onnx
 		{
 			return 运算("Where", [条件, 真值, 假值]);
 		}
-		public 中间变量 Min()
+		//返回该张量所有元素的最小值
+		public 中间变量 ReduceMin()
 		{
-			return 运算("Min", [this]);
+			return 运算("ReduceMin", [this]);
 		}
-		public 中间变量 Max()
+		private static readonly AttributeProto[] 空轴不操作 = [new()
 		{
-			return 运算("Max", [this]);
+			Name = "noop_with_empty_axes",
+			Type = AttributeProto.Types.AttributeType.Int,
+			I = 1
+		}];
+		//返回该张量沿指定轴规约的最小值
+		public 中间变量 ReduceMin(变量 轴)
+		{
+			return 运算("ReduceMin", [this, 轴], 空轴不操作);
+		}
+		//返回每个输入张量的逐元素最小值
+		public static 中间变量 Min(params 变量[]输入)
+		{
+			return 运算("Min", 输入);
+		}
+		//返回该张量所有元素的最大值
+		public 中间变量 ReduceMax()
+		{
+			return 运算("ReduceMax", [this]);
+		}
+		//返回该张量沿指定轴规约的最大值
+		public 中间变量 ReduceMax(变量 轴)
+		{
+			return 运算("ReduceMin", [this, 轴], 空轴不操作);
+		}
+		//返回每个输入张量的逐元素最大值
+		public static 中间变量 Max(params 变量[] 输入)
+		{
+			return 运算("Max", 输入);
 		}
 		public 中间变量 IsInf(bool 检测正无穷, bool 检测负无穷)
 		{
@@ -157,15 +198,17 @@ namespace Onnx
 		//两个条件输出数目必须相同。将根据条件返回其中一组输出，另一组不会被实际计算。
 		public IEnumerable<中间变量> If(IEnumerable<输出变量> 如果真, IEnumerable<输出变量> 如果假)
 		{
-			string[] 变量名 = [.. 如果真.Select(_ => 分配标识符())];
+			输出变量[] 锁定如果真 = [.. 如果真];
+			输出变量[] 锁定如果假 = [.. 如果假];
+			string[] 变量名 = [.. 锁定如果真.Select(_ => 分配标识符())];
 			//必须先ToArray确定下来，不能保留IEnumerable，否则每次都会获取新的标识符，不能重用
 
-			IEnumerable<NodeProto> 所有真节点 = 如果真.SelectMany(值 => 值.计算图.Node);
-			IEnumerable<NodeProto> 所有假节点 = 如果假.SelectMany(值 => 值.计算图.Node);
+			NodeProto[] 所有真节点 = [..锁定如果真.SelectMany(值 => 值.计算图.Node)];
+			NodeProto[] 所有假节点 = [..锁定如果假.SelectMany(值 => 值.计算图.Node)];
 			GraphProto 模板 = new()
 			{
-				Input = {如果真.Concat(如果假).Append(this).SelectMany(值 => 值.计算图.Input).Distinct() },
-				Initializer = { 如果真.Concat(如果假).Append(this).SelectMany(值 => 值.计算图.Initializer).Distinct() },
+				Input = { 锁定如果真.Concat(锁定如果假).Append(this).SelectMany(值 => 值.计算图.Input).Distinct() },
+				Initializer = { 锁定如果真.Concat(锁定如果假).Append(this).SelectMany(值 => 值.计算图.Initializer).Distinct() },
 				Node = { Enumerable.Intersect(所有真节点,所有假节点).Union(计算图.Node),new NodeProto()
 				{
 					OpType = "If",
@@ -180,8 +223,8 @@ namespace Onnx
 							G = new ()
 							{
 								Name = "then_branch",
-								Output={ 如果真.SelectMany(值=>值.计算图.Output) },
-								Node = { 所有真节点.Except(所有假节点) }
+								Output={ 锁定如果真.SelectMany(值=>值.计算图.Output) },
+								Node = { 所有真节点.Except(所有假节点).Except(计算图.Node) }
 							}
 						},
 						new AttributeProto()
@@ -191,8 +234,8 @@ namespace Onnx
 							G = new()
 							{
 								Name = "else_branch",
-								Output={ 如果假.SelectMany(值=>值.计算图.Output) },
-								Node = { 所有假节点.Except(所有真节点) }
+								Output={ 锁定如果假.SelectMany(值=>值.计算图.Output) },
+								Node = { 所有假节点.Except(所有真节点).Except(计算图.Node) }
 							}
 						}
 					}
@@ -309,13 +352,15 @@ namespace Onnx
 		//仅需传入所有输出变量即可生成最小计算模型。输出图的所有输出变量名与输入的所有输出变量名相同，但重复的输出变量名只保留一个，且不保证顺序。
 		public static GraphProto 生成计算图(string 名称, IEnumerable<输出变量> 所有输出)
 		{
+			//IEnumerable重复访问不保证产生相同的值，必须先锁定
+			输出变量[] 锁定 = [.. 所有输出];
 			return new()
 			{
 				Name = 名称,
-				Input = { 所有输出.SelectMany(输出 => 输出.计算图.Input).Distinct() },
-				Output = { 所有输出.SelectMany(输出 => 输出.计算图.Output).Distinct() },
-				Initializer = { 所有输出.SelectMany(输出 => 输出.计算图.Initializer).Distinct() },
-				Node = { 所有输出.SelectMany(输出 => 输出.计算图.Node).Distinct() },
+				Input = { 锁定.SelectMany(输出 => 输出.计算图.Input).Distinct() },
+				Output = { 锁定.SelectMany(输出 => 输出.计算图.Output).Distinct() },
+				Initializer = { 锁定.SelectMany(输出 => 输出.计算图.Initializer).Distinct() },
+				Node = { 锁定.SelectMany(输出 => 输出.计算图.Node).Distinct() },
 			};
 		}
 		//仅需传入所有输出变量即可生成最小计算模型。输出图的所有输出变量名与输入的所有输出变量名相同，但重复的输出变量名只保留一个，且不保证顺序。
@@ -366,7 +411,7 @@ namespace Onnx
 			Initializer = { 原型 }
 		})
 		{ }
-		static readonly Dictionary<object, 常量> 常量表 = [];
+		public static readonly Dictionary<object, 常量> 常量表 = [];
 		public 常量(IEnumerable<long> 值, IEnumerable<long> 各维尺寸) : base(new Func<GraphProto>(() =>
 		{
 			string 名称 = 分配标识符();
@@ -425,6 +470,7 @@ namespace Onnx
 	{
 		//使用各种运算方法获取此类对象，而不是直接构造
 		internal 中间变量(GraphProto 计算图) : base(计算图) { }
+		//取得和此中间变量同名的输出变量。那之后，此中间变量将不再可用。
 		public override 输出变量 Identity(string 输出名称, TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
 		{
 			计算图.Output.Add(new ValueInfoProto()
@@ -439,13 +485,15 @@ namespace Onnx
 					}
 				}
 			});
-			RepeatedField<string> 最终输出 = 计算图.Node.Last().Output;
+			RepeatedField<string> 最终输出 = (from NodeProto 节点 in 计算图.Node where 节点.Output.Contains(计算图.Name) select 节点.Output).Single();
 			最终输出[最终输出.IndexOf(计算图.Name)] = 输出名称;
 
 			//计算图.Name必须最后设置，因为前面还用到原始值
 			计算图.Name = 输出名称;
 
-			return new(计算图);
+			输出变量 返回值 = new(计算图);
+			计算图 = null;
+			return 返回值;
 		}
 		//取得和此中间变量同名的输出变量。那之后，此中间变量将不再可用。
 		public override 输出变量 Identity(TensorProto.Types.DataType 数据类型, IEnumerable<long> 各维尺寸)
@@ -462,14 +510,16 @@ namespace Onnx
 					}
 				}
 			});
-			return new(计算图);
+			输出变量 返回值 = new(计算图);
+			计算图 = null;
+			return 返回值;
 		}
 		public override string 名称
 		{
 			get => 计算图.Name;
 			set
 			{
-				RepeatedField<string> 节点输出 = 计算图.Node.Last().Output;
+				RepeatedField<string> 节点输出 = (from NodeProto 节点 in 计算图.Node where 节点.Output.Contains(计算图.Name) select 节点.Output).Single();
 				节点输出[节点输出.IndexOf(计算图.Name)] = value;
 				计算图.Name = value;
 			}
