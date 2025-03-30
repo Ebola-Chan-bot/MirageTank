@@ -2,37 +2,28 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
 			 xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
 			 xmlns:toolkit="http://schemas.microsoft.com/dotnet/2022/maui/toolkit"
-			 xmlns:mcp="clr-namespace:Maui.ColorPicker;assembly=Maui.ColorPicker"
+			xmlns:mcp="clr-namespace:Maui.ColorPicker;assembly=Maui.ColorPicker"
+			 xmlns:幻影坦克MAUI="clr-namespace:幻影坦克MAUI"
 			 x:Class="幻影坦克MAUI.MainPage" Loaded="ContentPage_Loaded">
 	<ContentPage.Resources>
-		<toolkit:Popup x:Key="明场背景">
-			<Grid>
-				<Grid.RowDefinitions>
-					<RowDefinition Height="Auto"/>
-					<RowDefinition/>
-				</Grid.RowDefinitions>
-				<Label Text="选择表图背景色" Grid.Row="0"/>
-				<mcp:ColorPicker x:Name="SurfaceColor" PickedColor="White"/>
-			</Grid>
+		<toolkit:Popup x:Key="表图选色器" x:Name="表图选色窗">
+			<mcp:ColorPicker x:Name="表图选色器" ColorSpectrumStyle="ShadeToHueToTintStyle" WidthRequest="500" HeightRequest="500" PickedColor="White"/>
 		</toolkit:Popup>
-		<toolkit:Popup x:Key="暗场背景">
-			<Grid>
-				<Grid.RowDefinitions>
-					<RowDefinition Height="Auto"/>
-					<RowDefinition/>
-				</Grid.RowDefinitions>
-				<Label Text="选择里图背景色" Grid.Row="0"/>
-				<mcp:ColorPicker x:Name="HiddenColor" PickedColor="Black"/>
-			</Grid>
+		<toolkit:Popup x:Key="里图选色器" x:Name="里图选色窗">
+			<mcp:ColorPicker x:Name="里图选色器" ColorSpectrumStyle="ShadeToHueToTintStyle" WidthRequest="500" HeightRequest="500" PickedColor="Black"/>
 		</toolkit:Popup>
-		<SolidColorBrush x:Key="前景色" Color="{Binding Source={x:Reference SurfaceColor},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
-		<SolidColorBrush x:Key="背景色" Color="{Binding Source={x:Reference HiddenColor},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
-		<toolkit:Popup x:Key="未生成图像">
-			<Label Text="请先生成幻影坦克再保存"/>
+		<SolidColorBrush x:Key="前景色" Color="{Binding Source={x:Reference 表图选色器},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
+		<SolidColorBrush x:Key="背景色" Color="{Binding Source={x:Reference 里图选色器},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
+		<toolkit:Popup x:Key="异常弹窗" x:Name="异常弹窗">
+			<Label x:Name="异常文本"/>
 		</toolkit:Popup>
-		<toolkit:Popup x:Key="已复制">
-			<Label Text="已复制"/>
-		</toolkit:Popup>
+		<MenuFlyout x:Key="复制生成菜单">
+			<MenuFlyoutItem Text="复制" Clicked="复制生成图">
+				<MenuFlyoutItem.KeyboardAccelerators>
+					<KeyboardAccelerator Modifiers="Ctrl" Key="C"/>
+				</MenuFlyoutItem.KeyboardAccelerators>
+			</MenuFlyoutItem>
+		</MenuFlyout>
 	</ContentPage.Resources>
 	<Grid>
 		<Grid.ColumnDefinitions>
@@ -50,8 +41,8 @@
 				<RowDefinition/>
 				<RowDefinition/>
 			</Grid.RowDefinitions>
-			<Button x:Name="Generate" Text="生成" Grid.Row="0" Clicked="Generate_Clicked"/>
-			<Button x:Name="保存" Text="保存" Grid.Row="1"/>
+			<Button x:Name="生成" Text="生成" Grid.Column="0" Grid.Row="0" Clicked="Generate_Clicked"/>
+			<Button x:Name="保存" Text="保存" Grid.Column="0" Grid.Row="1"/>
 		</Grid>
 		<Label Grid.Column="1" Grid.Row="0" Text="原图（点击图片选择文件）" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
 		<Label Grid.Column="2" Grid.Row="0" Text="预览（点击图片选择背景色）" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
@@ -69,7 +60,17 @@
 			</Image.GestureRecognizers>
 		</Image>
 		<Grid x:Name="明场Grid" Grid.Column="2" Grid.Row="1" Background="{StaticResource 前景色}">
-			<Image x:Name="明场预览"/>
+			<Image x:Name="明场预览">
+				<FlyoutBase.ContextFlyout>
+					<OnPlatform x:TypeArguments="FlyoutBase">
+						<On Platform="Default" Value="{x:Null}"/>
+						<On Platform="Windows" Value="{StaticResource 复制生成菜单}"/>
+					</OnPlatform>
+				</FlyoutBase.ContextFlyout>
+			</Image>
+			<Grid.GestureRecognizers>
+				<TapGestureRecognizer Tapped="明场预览_Tapped" />
+			</Grid.GestureRecognizers>
 		</Grid>
 		<Image x:Name="里图" Grid.Column="1" Grid.Row="2">
 			<FlyoutBase.ContextFlyout>
@@ -83,7 +84,17 @@
 			</Image.GestureRecognizers>
 		</Image>
 		<Grid x:Name="暗场Grid" Grid.Column="2" Grid.Row="2" Background="{StaticResource 背景色}">
-			<Image x:Name="暗场预览"/>
+			<Image x:Name="暗场预览">
+				<FlyoutBase.ContextFlyout>
+					<OnPlatform x:TypeArguments="FlyoutBase">
+						<On Platform="Default" Value="{x:Null}"/>
+						<On Platform="Windows" Value="{StaticResource 复制生成菜单}"/>
+					</OnPlatform>
+				</FlyoutBase.ContextFlyout>
+			</Image>
+			<Grid.GestureRecognizers>
+				<TapGestureRecognizer Tapped="暗场预览_Tapped" />
+			</Grid.GestureRecognizers>
 		</Grid>
 		<ActivityIndicator x:Name="进度环" Grid.Column="1" Grid.Row="2" Grid.ColumnSpan="2"/>
 	</Grid>
