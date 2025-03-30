@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Maui.Views;
+﻿using CommunityToolkit.Maui.Storage;
+using CommunityToolkit.Maui.Views;
 using Google.Protobuf;
 using Maui.ColorPicker;
 using Microsoft.ML.OnnxRuntime;
@@ -102,8 +103,8 @@ namespace 幻影坦克MAUI
 		private static MemoryStream 流拷贝(Stream 源流)
 		{
 			MemoryStream 目标流 = new();
-			源流.CopyTo(目标流);
 			源流.Position = 0;
+			源流.CopyTo(目标流);
 			目标流.Position = 0;
 			return 目标流;
 		}
@@ -130,7 +131,6 @@ namespace 幻影坦克MAUI
 				}
 #endif
 				InferenceSession 推理会话;
-#if !DEBUG
 				if (File.Exists(模型路径))
 					try
 					{
@@ -141,8 +141,7 @@ namespace 幻影坦克MAUI
 						推理会话 = new(更新模型会话(), 会话选项);
 					}
 				else
-#endif
-				推理会话 = new(更新模型会话(), 会话选项);
+					推理会话 = new(更新模型会话(), 会话选项);
 				SKBitmap 幻影坦克 = new();
 				幻影坦克.InstallPixels(new SKImageInfo(输出宽度, 输出高度, SKColorType.Rgba8888, SKAlphaType.Unpremul), SKData.CreateCopy(推理会话.Run(new RunOptions(), new Dictionary<string, OrtValue>
 				{
@@ -160,7 +159,6 @@ namespace 幻影坦克MAUI
 			catch (Exception 异常)
 			{
 				异常文本.Text =$"{异常.GetType()}：{异常.Message}";
-				this.ShowPopup(异常弹窗);
 			}
 		}
 		private async void ContentPage_Loaded(object sender, EventArgs e)
@@ -193,20 +191,85 @@ namespace 幻影坦克MAUI
 				里图.Source = ImageSource.FromStream(() => 流拷贝(里图流));
 			}
 		}
-
 		private void 复制生成图(object sender, EventArgs e)
 		{
 #if WINDOWS
-			复制生成图();
+			if(预览图 == null)
+			{
+				异常文本.Text = "请先生成幻影坦克";
+				return;
+			}
+			复制SK图(预览图);
+#endif
+		}
+		private ColorPicker? 焦点;
+		private void 明场预览_Tapped(object sender, TappedEventArgs e)
+		{
+			清理焦点();
+			表图选色器.IsVisible = true;
+			焦点 = 表图选色器;
+		}
+		private void 暗场预览_Tapped(object sender, TappedEventArgs e)
+		{
+			清理焦点();
+			里图选色器.IsVisible = true;
+			焦点 = 里图选色器;
+		}
+		private void 清理焦点()
+		{
+			if(焦点 != null)
+			{
+				焦点.IsVisible = false;
+				焦点 = null;
+			}
+		}
+		private void 清理焦点(object sender, TappedEventArgs e)
+		{
+			清理焦点();
+		}
+
+		private void 保存_Clicked(object sender, EventArgs e)
+		{
+			if (预览图 == null)
+			{
+				异常文本.Text = "请先生成幻影坦克";
+				return;
+			}
+			FileSaver.SaveAsync("幻影坦克.png", 预览图.AsStream());
+		}
+
+		private void 复制表图_Clicked(object sender, EventArgs e)
+		{
+#if WINDOWS
+			表图流.Position = 0;
+			复制SK图(SKBitmap.Decode(SKData.Create(表图流)).Encode(SKEncodedImageFormat.Png, 100));
 #endif
 		}
 
-		private void 明场预览_Tapped(object sender, TappedEventArgs e)
+		private async void 粘贴表图_Clicked(object sender, EventArgs e)
 		{
+#if WINDOWS
+			Stream? 流 = await 粘贴(表图);
+			if (流 != null)
+				表图流 = 流;
+#endif
 		}
 
-		private void 暗场预览_Tapped(object sender, TappedEventArgs e)
+		private void 复制里图_Clicked(object sender, EventArgs e)
 		{
+#if WINDOWS
+			里图流.Position = 0;
+			复制SK图(SKBitmap.Decode(SKData.Create(里图流)).Encode(SKEncodedImageFormat.Png, 100));
+#endif
+		}
+
+		private async void 粘贴里图_Clicked(object sender, EventArgs e)
+		{
+#if WINDOWS
+			Stream? 流 = await 粘贴(里图);
+			if (流 != null)
+				里图流 = 流;
+#endif
 		}
 	}
 }

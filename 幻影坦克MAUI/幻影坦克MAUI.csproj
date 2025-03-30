@@ -51,7 +51,7 @@
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-maccatalyst|AnyCPU'">
 	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>cap.ebolachan.miragetank</ApplicationId>
+	  <ApplicationId>bot.ebolachan.miragetank</ApplicationId>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-android|AnyCPU'">
@@ -66,12 +66,22 @@
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-maccatalyst|AnyCPU'">
 	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>cap.ebolachan.miragetank</ApplicationId>
+	  <ApplicationId>bot.ebolachan.miragetank</ApplicationId>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-windows10.0.26100.0|AnyCPU'">
 	  <ApplicationTitle>幻影坦克</ApplicationTitle>
 	  <ApplicationId>cap.ebolachan.miragetank</ApplicationId>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-android35.0|AnyCPU'">
+	  <ApplicationTitle>幻影坦克</ApplicationTitle>
+	  <ApplicationId>bot.ebolachan.miragetank</ApplicationId>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-android35.0|AnyCPU'">
+	  <ApplicationTitle>幻影坦克</ApplicationTitle>
+	  <ApplicationId>bot.ebolachan.miragetank</ApplicationId>
 	</PropertyGroup>
 
 	<ItemGroup>
