@@ -12,8 +12,8 @@
 		<toolkit:Popup x:Key="里图选色器" x:Name="里图选色窗">
 			<mcp:ColorPicker x:Name="里图选色器" ColorSpectrumStyle="ShadeToHueToTintStyle" WidthRequest="500" HeightRequest="500" PickedColor="Black"/>
 		</toolkit:Popup>
-		<SolidColorBrush x:Key="前景色" Color="{Binding Source={x:Reference 表图选色器},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
-		<SolidColorBrush x:Key="背景色" Color="{Binding Source={x:Reference 里图选色器},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
+		<SolidColorBrush x:Key="前景色" x:Name="明场色" Color="{Binding Source={x:Reference 表图选色器},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
+		<SolidColorBrush x:Key="背景色" x:Name="暗场色" Color="{Binding Source={x:Reference 里图选色器},x:DataType=mcp:ColorPicker,Path=PickedColor,Mode=OneWay}"/>
 		<toolkit:Popup x:Key="异常弹窗" x:Name="异常弹窗">
 			<Label x:Name="异常文本"/>
 		</toolkit:Popup>
@@ -68,6 +68,7 @@
 					</OnPlatform>
 				</FlyoutBase.ContextFlyout>
 			</Image>
+			<!--<mcp:ColorPicker x:Name="表图选色器" ColorSpectrumStyle="ShadeToHueToTintStyle" PickedColor="White" IsVisible="false"/>-->
 			<Grid.GestureRecognizers>
 				<TapGestureRecognizer Tapped="明场预览_Tapped" />
 			</Grid.GestureRecognizers>
@@ -92,6 +93,7 @@
 					</OnPlatform>
 				</FlyoutBase.ContextFlyout>
 			</Image>
+			<!--<mcp:ColorPicker x:Name="里图选色器" ColorSpectrumStyle="ShadeToHueToTintStyle" PickedColor="Black" IsVisible="False"/>-->
 			<Grid.GestureRecognizers>
 				<TapGestureRecognizer Tapped="暗场预览_Tapped" />
 			</Grid.GestureRecognizers>

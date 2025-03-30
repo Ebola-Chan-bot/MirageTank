@@ -203,12 +203,10 @@ namespace 幻影坦克MAUI
 
 		private void 明场预览_Tapped(object sender, TappedEventArgs e)
 		{
-			this.ShowPopup(表图选色窗);
 		}
 
 		private void 暗场预览_Tapped(object sender, TappedEventArgs e)
 		{
-			this.ShowPopup(里图选色窗);
 		}
 	}
 }
