@@ -1,5 +1,4 @@
 ﻿using CommunityToolkit.Maui.Storage;
-using CommunityToolkit.Maui.Views;
 using Google.Protobuf;
 using Maui.ColorPicker;
 using Microsoft.ML.OnnxRuntime;
@@ -165,8 +164,8 @@ namespace 幻影坦克MAUI
 		{
 			表图流 = await FileSystem.OpenAppPackageFileAsync($"surface_raw.jpg");
 			里图流 = await FileSystem.OpenAppPackageFileAsync($"hidden_raw.jpg");
-			表图.Source = ImageSource.FromStream(() => 流拷贝(表图流));
-			里图.Source = ImageSource.FromStream(() => 流拷贝(里图流));
+			表图.Source = ImageSource.FromFile("surface_raw.jpg");
+			里图.Source = ImageSource.FromFile("hidden_raw.jpg");
 		}
 		readonly PickOptions options = new()
 		{
