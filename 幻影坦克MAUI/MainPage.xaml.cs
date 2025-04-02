@@ -107,11 +107,11 @@ namespace 幻影坦克MAUI
 			目标流.Position = 0;
 			return 目标流;
 		}
-		private void Generate_Clicked(object sender, EventArgs e)
+		private async void Generate_Clicked(object sender, EventArgs e)
 		{
 			try
 			{
-				SKBitmap 表图对象 = SKBitmap.Decode(流拷贝(表图流));
+				SKBitmap 表图对象 = SKBitmap.Decode(await FileSystem.OpenAppPackageFileAsync("surface_raw.jpg"));
 				SKBitmap 里图对象 = SKBitmap.Decode(流拷贝(里图流));
 				int 输出高度 = Math.Max(表图对象.Height, 里图对象.Height);
 				int 输出宽度 = Math.Max(表图对象.Width, 里图对象.Width);
@@ -162,10 +162,8 @@ namespace 幻影坦克MAUI
 		}
 		private async void ContentPage_Loaded(object sender, EventArgs e)
 		{
-			表图流 = await FileSystem.OpenAppPackageFileAsync($"surface_raw.jpg");
-			里图流 = await FileSystem.OpenAppPackageFileAsync($"hidden_raw.jpg");
-			表图.Source = ImageSource.FromFile("surface_raw.jpg");
-			里图.Source = ImageSource.FromFile("hidden_raw.jpg");
+			表图流 = await FileSystem.OpenAppPackageFileAsync("surface_raw.jpg");
+			里图流 = await FileSystem.OpenAppPackageFileAsync("hidden_raw.jpg");
 		}
 		readonly PickOptions options = new()
 		{

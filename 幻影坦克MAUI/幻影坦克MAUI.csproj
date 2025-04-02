@@ -110,7 +110,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Resources\Images\" />
+	  <MauiImage Include="Resources\Images\hidden_image.jpg" />
+	  <MauiImage Include="Resources\Images\surface_image.jpg" />
 	</ItemGroup>
 
 </Project>
