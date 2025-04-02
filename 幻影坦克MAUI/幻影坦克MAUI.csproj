@@ -104,9 +104,16 @@
 		<PackageReference Include="CommunityToolkit.Maui" Version="11.2.0" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="9.0.50" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.3" />
-		<PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu.Windows" Version="1.21.0" />
 		<PackageReference Include="nor0x.Maui.ColorPicker" Version="2.0.4" />
 		<PackageReference Include="OnnxSharp" Version="0.3.2" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-windows10.0.26100.0'">
+		<PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.21.0" />
+	</ItemGroup>
+
+	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-android35.0'">
+		<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.21.0" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -41,8 +41,19 @@ namespace 幻影坦克MAUI
 				OpsetImport = { new OperatorSetIdProto() { Version = 22 } },
 				Graph = 计算图
 			};
-			模型.WriteToFile(模型路径);
-			new InferenceSession(模型.ToByteArray());
+			SessionOptions 会话选项 = new();
+#if ANDROID
+				会话选项.AppendExecutionProvider_Nnapi();
+#endif
+			try
+			{
+				new InferenceSession(模型.ToByteArray(), 会话选项);
+			}
+			catch(Exception 异常)
+			{
+				FileSaver.SaveAsync("验证模型.onnx", new MemoryStream(模型.ToByteArray()));
+				throw;
+			}
 			return 要验证的输出[0];
 		}
 #endif
@@ -72,9 +83,10 @@ namespace 幻影坦克MAUI
 		private SKData? 预览图;
 		private static byte[] 更新模型会话()
 		{
-			中间变量 表里图 = new 输入变量("表里图", TensorProto.Types.DataType.Uint8, [2, -1, -1, 4]).Cast(TensorProto.Types.DataType.Float);
-			中间变量 背景色 = new 输入变量("背景色", TensorProto.Types.DataType.Uint8, [2, 1, 1, 3]).Cast(TensorProto.Types.DataType.Float);
+			变量 表里图 = new 输入变量("表里图", TensorProto.Types.DataType.Uint8, [2, -1, -1, 4]).Cast(TensorProto.Types.DataType.Float);
+			变量 背景色 = new 输入变量("背景色", TensorProto.Types.DataType.Uint8, [2, 1, 1, 3]).Cast(TensorProto.Types.DataType.Float);
 			中间变量[] 表里背景色 = [.. 背景色.Split(0, 2, new 常量([1, 1]))];
+			验证模型(表里背景色[0], 表里背景色[1]);
 			中间变量[] 颜色透明通道 = [.. 表里图.Split(3, 2, new 常量([3, 1]))];
 			表里图 = ((255f - 颜色透明通道[1]) * 背景色 + 颜色透明通道[1] * 颜色透明通道[0]) / 255f;
 			背景色 = 表里背景色[0] - 表里背景色[1];
@@ -90,6 +102,7 @@ namespace 幻影坦克MAUI
 			颜色透明通道[1] = 变量.Where(颜色透明通道[1].IsNaN(), 255f, 颜色透明通道[1]).ReduceMean(3);
 			背景色 = 表里背景色[0] + 表里背景色[1];
 			表里图 = 范围放缩((255f * (表里图拆分[0] + 表里图拆分[1] - 背景色) / 颜色透明通道[1] + 背景色) / 2f);
+			验证模型(变量.Concat(3, 表里图, 颜色透明通道[1]));
 			ModelProto 模型原型 = new()
 			{
 				IrVersion = 10,
@@ -107,11 +120,11 @@ namespace 幻影坦克MAUI
 			目标流.Position = 0;
 			return 目标流;
 		}
-		private async void Generate_Clicked(object sender, EventArgs e)
+		private void Generate_Clicked(object sender, EventArgs e)
 		{
 			try
 			{
-				SKBitmap 表图对象 = SKBitmap.Decode(await FileSystem.OpenAppPackageFileAsync("surface_raw.jpg"));
+				SKBitmap 表图对象 = SKBitmap.Decode(流拷贝(表图流));
 				SKBitmap 里图对象 = SKBitmap.Decode(流拷贝(里图流));
 				int 输出高度 = Math.Max(表图对象.Height, 里图对象.Height);
 				int 输出宽度 = Math.Max(表图对象.Width, 里图对象.Width);
@@ -137,6 +150,7 @@ namespace 幻影坦克MAUI
 					}
 					catch (OnnxRuntimeException)
 					{
+						推理会话 = new(更新模型会话());
 						推理会话 = new(更新模型会话(), 会话选项);
 					}
 				else
@@ -160,10 +174,26 @@ namespace 幻影坦克MAUI
 				异常文本.Text =$"{异常.GetType()}：{异常.Message}";
 			}
 		}
+		private static Stream 图流可复用化(Stream 图流)
+		{
+#if ANDROID
+			//Android文件流只能读一次，因此需要先拷贝到内存流才能复用
+			MemoryStream 内存流 = new();
+			图流.CopyTo(内存流);
+			内存流.Position = 0;
+			return 内存流;
+#else
+			return 图流;
+#endif
+		}
 		private async void ContentPage_Loaded(object sender, EventArgs e)
 		{
-			表图流 = await FileSystem.OpenAppPackageFileAsync("surface_raw.jpg");
-			里图流 = await FileSystem.OpenAppPackageFileAsync("hidden_raw.jpg");
+			表图流 = 图流可复用化(await FileSystem.OpenAppPackageFileAsync("surface_raw.jpg"));
+			里图流 = 图流可复用化(await FileSystem.OpenAppPackageFileAsync("hidden_raw.jpg"));
+
+			//ImageSource会析构流，因此需要拷贝
+			表图.Source = ImageSource.FromStream(() => 流拷贝(表图流));
+			里图.Source = ImageSource.FromStream(() => 流拷贝(里图流));
 		}
 		readonly PickOptions options = new()
 		{
@@ -175,7 +205,7 @@ namespace 幻影坦克MAUI
 			FileResult? result = await FilePicker.Default.PickAsync(options);
 			if (result != null)
 			{
-				表图流 = await result.OpenReadAsync();
+				表图流 = 图流可复用化(await result.OpenReadAsync());
 				表图.Source = ImageSource.FromStream(() => 流拷贝(表图流));
 			}
 		}
@@ -184,7 +214,7 @@ namespace 幻影坦克MAUI
 			FileResult? result = await FilePicker.Default.PickAsync(options);
 			if (result != null)
 			{
-				里图流 = await result.OpenReadAsync();
+				里图流 = 图流可复用化(await result.OpenReadAsync());
 				里图.Source = ImageSource.FromStream(() => 流拷贝(里图流));
 			}
 		}

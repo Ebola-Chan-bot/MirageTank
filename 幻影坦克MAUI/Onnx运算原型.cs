@@ -333,7 +333,7 @@ namespace Onnx
 						Name = "axis",
 						Type = AttributeProto.Types.AttributeType.Int,
 						I = 轴
-					} }
+					}}
 				} }
 			};
 			foreach (string 名称 in 变量名)

@@ -41,7 +41,7 @@
 		<Label Grid.Column="2" Grid.Row="0" Text="预览（点击图片选择背景色）" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
 		<Label Grid.Column="0" Grid.Row="1" Text="表图" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
 		<Label Grid.Column="0" Grid.Row="2" Text="里图" HorizontalTextAlignment="Center" VerticalTextAlignment="Center"/>
-		<Image x:Name="表图" Grid.Column="1" Grid.Row="1" Source="surface_image.jpg">
+		<Image x:Name="表图" Grid.Column="1" Grid.Row="1">
 			<FlyoutBase.ContextFlyout>
 				<MenuFlyout>
 					<MenuFlyoutItem x:Name="复制表图" Text="复制" Clicked="复制表图_Clicked"/>
@@ -59,7 +59,7 @@
 				<TapGestureRecognizer Tapped="明场预览_Tapped" />
 			</Grid.GestureRecognizers>
 		</Grid>
-		<Image x:Name="里图" Grid.Column="1" Grid.Row="2" Source="hidden_image.jpg">
+		<Image x:Name="里图" Grid.Column="1" Grid.Row="2">
 			<FlyoutBase.ContextFlyout>
 				<MenuFlyout>
 					<MenuFlyoutItem x:Name="复制里图" Text="复制" Clicked="复制里图_Clicked"/>
