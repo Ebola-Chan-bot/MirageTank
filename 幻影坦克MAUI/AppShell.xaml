@@ -10,6 +10,10 @@
     <ShellContent
         Title="幻影坦克"
         ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
+        Route="MainPage" Icon="tank.png" />
+	<ShellContent
+        Title="帮助和关于"
+        ContentTemplate="{DataTemplate local:HelpAbout}"
+        Route="HelpAbout" Icon="help.png" />
 
 </Shell>

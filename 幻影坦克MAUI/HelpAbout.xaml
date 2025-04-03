@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="幻影坦克MAUI.HelpAbout"
+             Title="帮助和关于">
+	<WebView x:Name="Web页" Source="README.html" Navigated="Web页_Navigated"/>
+</ContentPage>

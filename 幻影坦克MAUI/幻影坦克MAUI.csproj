@@ -92,6 +92,7 @@
 		<MauiSplashScreen Include="Resources\Splash\splash.svg" />
 
 		<!-- Images -->
+		<MauiImage Include="Resources\Images\**" />
 
 		<!-- Custom Fonts -->
 		<MauiFont Include="Resources\Fonts\*" />
@@ -117,8 +118,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <MauiImage Include="Resources\Images\hidden_image.jpg" />
-	  <MauiImage Include="Resources\Images\surface_image.jpg" />
+	  <MauiXaml Update="HelpAbout.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	</ItemGroup>
 
 </Project>

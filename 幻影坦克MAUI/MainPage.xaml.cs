@@ -30,7 +30,7 @@ namespace 幻影坦克MAUI
 			}
 			return 输出位图.Bytes;
 		}
-		private static readonly string 模型路径 = Path.Combine(FileSystem.CacheDirectory, "模型v1.onnx");
+		static readonly string 模型路径 = Path.Combine(FileSystem.CacheDirectory, "模型v2.onnx");
 #if DEBUG
 		private static 中间变量 验证模型(params 中间变量[] 要验证的输出)
 		{
@@ -91,10 +91,102 @@ namespace 幻影坦克MAUI
 		}
 		readonly InferenceSession 推理会话 = new Func<InferenceSession>(() =>
 		{
-			会话选项.AppendExecutionProvider_CPU();
+			SessionOptions 会话选项 = new();
 			if (File.Exists(模型路径))
 				try
 				{
+#if ANDROID
+					try
+					{
+						会话选项.AppendExecutionProvider("QNN");
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)//可能是EntryPointNotFoundException或OnnxRuntimeException
+					{ }
+					会话选项 = new();
+					try
+					{
+						会话选项.AppendExecutionProvider("SNPE");
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+					会话选项 = new();
+					try
+					{
+						会话选项.AppendExecutionProvider_Nnapi();
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+					会话选项 = new();
+					try
+					{
+						会话选项.AppendExecutionProvider("XNNPACK");
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+#endif
+#if WINDOWS
+					try
+					{
+						会话选项.AppendExecutionProvider_Tensorrt();
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+					会话选项 = new();
+					try
+					{
+						会话选项.AppendExecutionProvider_CUDA();
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+					会话选项 = new();
+					try
+					{
+						会话选项.AppendExecutionProvider_Dnnl();
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+					会话选项 = new();
+					try
+					{
+						会话选项.AppendExecutionProvider_OpenVINO();
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+					会话选项 = new();
+					try
+					{
+						会话选项.AppendExecutionProvider_MIGraphX();
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+					会话选项 = new();
+					try
+					{
+						会话选项.AppendExecutionProvider_ROCm();
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+					会话选项 = new();
+					try
+					{
+						会话选项.AppendExecutionProvider_DML();
+						return new(模型路径, 会话选项);
+					}
+					catch (Exception)
+					{ }
+					会话选项 = new();
+#endif
+					会话选项.AppendExecutionProvider_CPU();
 					return new(模型路径, 会话选项);
 				}
 				catch (OnnxRuntimeException)
@@ -124,8 +216,8 @@ namespace 幻影坦克MAUI
 				Graph = 输出变量.生成计算图([变量.Concat(3, 表里图, 颜色透明通道[1]).Cast(TensorProto.Types.DataType.Uint8).Identity("幻影坦克", TensorProto.Types.DataType.Uint8, [-1, -1, 4])])
 			};
 			模型原型.WriteToFile(模型路径);
-			SessionOptions 会话选项 = new();
 #if ANDROID
+			会话选项 = new();
 			try
 			{
 				会话选项.AppendExecutionProvider("QNN");
@@ -159,6 +251,62 @@ namespace 幻影坦克MAUI
 			{ }
 #endif
 #if WINDOWS
+			会话选项 = new();
+			try
+			{
+				会话选项.AppendExecutionProvider_Tensorrt();
+				return new(模型原型.ToByteArray(), 会话选项);
+			}
+			catch (Exception)
+			{ }
+			会话选项 = new();
+			try
+			{
+				会话选项.AppendExecutionProvider_CUDA();
+				return new(模型原型.ToByteArray(), 会话选项);
+			}
+			catch (Exception)
+			{ }
+			会话选项 = new();
+			try
+			{
+				会话选项.AppendExecutionProvider_Dnnl();
+				return new(模型原型.ToByteArray(), 会话选项);
+			}
+			catch (Exception)
+			{ }
+			会话选项 = new();
+			try
+			{
+				会话选项.AppendExecutionProvider_OpenVINO();
+				return new(模型原型.ToByteArray(), 会话选项);
+			}
+			catch (Exception)
+			{ }
+			会话选项 = new();
+			try
+			{
+				会话选项.AppendExecutionProvider_MIGraphX();
+				return new(模型原型.ToByteArray(), 会话选项);
+			}
+			catch (Exception)
+			{ }
+			会话选项 = new();
+			try
+			{
+				会话选项.AppendExecutionProvider_ROCm();
+				return new(模型原型.ToByteArray(), 会话选项);
+			}
+			catch (Exception)
+			{ }
+			会话选项 = new();
+			try
+			{
+				会话选项.AppendExecutionProvider_DML();
+				return new(模型原型.ToByteArray(), 会话选项);
+			}
+			catch (Exception)
+			{ }
 #endif
 			会话选项 = new();
 			会话选项.AppendExecutionProvider_CPU();
@@ -167,29 +315,42 @@ namespace 幻影坦克MAUI
 		readonly SKBitmap 幻影坦克 = new();
 		readonly RunOptions 运行选项 = new();
 		readonly Dictionary<string, OrtValue> 运行输入 = new();
-		private void Generate_Clicked(object sender, EventArgs e)
+		private async void Generate_Clicked(object sender, EventArgs e)
 		{
+			生成.IsVisible = false;
+			保存.IsVisible = false;
+			进度环.IsRunning = true;
+			异常文本.Text = "";
 			try
 			{
-				SKBitmap 表图对象 = SKBitmap.Decode(流拷贝(表图流));
-				SKBitmap 里图对象 = SKBitmap.Decode(流拷贝(里图流));
-				int 输出高度 = Math.Max(表图对象.Height, 里图对象.Height);
-				int 输出宽度 = Math.Max(表图对象.Width, 里图对象.Width);
-				运行输入["表里图"] = OrtValue.CreateTensorValueFromMemory(位图转字节(表图对象, 输出高度, 输出宽度, 里图选色器).Concat(位图转字节(里图对象, 输出高度, 输出宽度, 表图选色器)).ToArray(), [2, 输出高度, 输出宽度, 4]);
-				运行输入["背景色"] = OrtValue.CreateTensorValueFromMemory(
-				[
-					(byte)(表图选色器.PickedColor.Red * 255), (byte)(表图选色器.PickedColor.Green * 255), (byte)(表图选色器.PickedColor.Blue * 255),
+				string 预览路径 = await Task.Run(() =>
+				{
+					SKBitmap 表图对象 = SKBitmap.Decode(流拷贝(表图流));
+					SKBitmap 里图对象 = SKBitmap.Decode(流拷贝(里图流));
+					int 输出高度 = Math.Max(表图对象.Height, 里图对象.Height);
+					int 输出宽度 = Math.Max(表图对象.Width, 里图对象.Width);
+					运行输入["表里图"] = OrtValue.CreateTensorValueFromMemory(位图转字节(表图对象, 输出高度, 输出宽度, 表图选色器).Concat(位图转字节(里图对象, 输出高度, 输出宽度, 里图选色器)).ToArray(), [2, 输出高度, 输出宽度, 4]);
+					运行输入["背景色"] = OrtValue.CreateTensorValueFromMemory(
+					[
+						(byte)(表图选色器.PickedColor.Red * 255), (byte)(表图选色器.PickedColor.Green * 255), (byte)(表图选色器.PickedColor.Blue * 255),
 					(byte)(里图选色器.PickedColor.Red * 255), (byte)(里图选色器.PickedColor.Green * 255), (byte)(里图选色器.PickedColor.Blue * 255)
-				], [2, 1, 1, 3]);
-				幻影坦克.InstallPixels(new SKImageInfo(输出宽度, 输出高度, SKColorType.Rgba8888, SKAlphaType.Unpremul), SKData.CreateCopy(推理会话.Run(运行选项, 运行输入, ["幻影坦克"])[0].GetTensorDataAsSpan<byte>()).Data);
-				预览图 = SKImage.FromBitmap(幻影坦克).Encode(SKEncodedImageFormat.Png, 100);
-				明场预览.Source = ImageSource.FromStream(() => 预览图.AsStream());
-				暗场预览.Source = ImageSource.FromStream(() => 预览图.AsStream());
+					], [2, 1, 1, 3]);
+					幻影坦克.InstallPixels(new SKImageInfo(输出宽度, 输出高度, SKColorType.Rgba8888, SKAlphaType.Unpremul), SKData.CreateCopy(推理会话.Run(运行选项, 运行输入, ["幻影坦克"])[0].GetTensorDataAsSpan<byte>()).Data);
+					预览图 = 幻影坦克.Encode(SKEncodedImageFormat.Png, 100);
+					string 预览路径 = Path.Combine(FileSystem.CacheDirectory, Guid.NewGuid() + ".png");//不能使用分配标识符或者任何可能已存在的文件名。Android的缓存机制存在问题，覆盖创建的文件不会被读取方感知到。
+					预览图.SaveTo(new FileStream(预览路径, FileMode.Create));//Android的ImageSource.FromStream无法处理大数据，需要先输出到文件
+					return 预览路径;
+				});
+				明场预览.Source = ImageSource.FromFile(预览路径);
+				暗场预览.Source = ImageSource.FromFile(预览路径);
 			}
 			catch (Exception 异常)
 			{
 				异常文本.Text = $"{异常.GetType()}：{异常.Message}";
 			}
+			进度环.IsRunning = false;
+			生成.IsVisible = true;
+			保存.IsVisible = true;
 		}
 		private static Stream 图流可复用化(Stream 图流)
 		{
@@ -223,7 +384,7 @@ namespace 幻影坦克MAUI
 			if (result != null)
 			{
 				表图流 = 图流可复用化(await result.OpenReadAsync());
-				表图.Source = ImageSource.FromStream(() => 流拷贝(表图流));
+				表图.Source = ImageSource.FromFile(result.FullPath);//FromStream在Android上不支持较大的文件
 			}
 		}
 		private async void 里图_Tapped(object sender, TappedEventArgs e)
@@ -232,7 +393,7 @@ namespace 幻影坦克MAUI
 			if (result != null)
 			{
 				里图流 = 图流可复用化(await result.OpenReadAsync());
-				里图.Source = ImageSource.FromStream(() => 流拷贝(里图流));
+				里图.Source = ImageSource.FromFile(result.FullPath);//FromStream在Android上不支持较大的文件
 			}
 		}
 		private void 复制生成图(object sender, EventArgs e)
