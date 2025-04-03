@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<MauiEnableXamlCBindingWithSourceCompilation>true</MauiEnableXamlCBindingWithSourceCompilation>
-		<TargetFrameworks>net9.0-maccatalyst;net9.0-android35.0</TargetFrameworks>
+		<TargetFrameworks>net9.0-android35.0</TargetFrameworks>
 		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.26100.0</TargetFrameworks>
 		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
 		<!-- <TargetFrameworks>$(TargetFrameworks);net9.0-tizen</TargetFrameworks> -->
@@ -22,10 +22,10 @@
 		<Nullable>enable</Nullable>
 
 		<!-- Display name -->
-		<ApplicationTitle>幻影坦克MAUI</ApplicationTitle>
+		<ApplicationTitle>幻影坦克</ApplicationTitle>
 
 		<!-- App Identifier -->
-		<ApplicationId>com.companyname.maui</ApplicationId>
+		<ApplicationId>bot.ebolachan.miragetank</ApplicationId>
 
 		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
@@ -41,55 +41,28 @@
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
 		<DefaultLanguage>zh-CN</DefaultLanguage>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-android|AnyCPU'">
-	  <AndroidPackageFormat>apk</AndroidPackageFormat>
-	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>cap.ebolachan.miragetank</ApplicationId>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-maccatalyst|AnyCPU'">
-	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>bot.ebolachan.miragetank</ApplicationId>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-android|AnyCPU'">
-	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>cap.ebolachan.miragetank</ApplicationId>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-windows10.0.26100.0|AnyCPU'">
-	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>cap.ebolachan.miragetank</ApplicationId>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-maccatalyst|AnyCPU'">
-	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>bot.ebolachan.miragetank</ApplicationId>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-windows10.0.26100.0|AnyCPU'">
-	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>cap.ebolachan.miragetank</ApplicationId>
-	</PropertyGroup>
-
-	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-android35.0|AnyCPU'">
-	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>bot.ebolachan.miragetank</ApplicationId>
+		<GenerateAppInstallerFile>False</GenerateAppInstallerFile>
+		<AppxPackageSigningEnabled>False</AppxPackageSigningEnabled>
+		<AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+		<AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
+		<AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
+		<GenerateTestArtifacts>False</GenerateTestArtifacts>
+		<GenerateTemporaryStoreCertificate>True</GenerateTemporaryStoreCertificate>
+		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
+		<Deterministic>False</Deterministic>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-android35.0|AnyCPU'">
-	  <ApplicationTitle>幻影坦克</ApplicationTitle>
-	  <ApplicationId>bot.ebolachan.miragetank</ApplicationId>
+	  <AndroidPackageFormat>apk</AndroidPackageFormat>
+	  <AndroidLinkTool>r8</AndroidLinkTool>
 	</PropertyGroup>
 
 	<ItemGroup>
 		<!-- App Icon -->
-		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
+		<MauiIcon Include="Resources\AppIcon\mirage_icon.png" />
 
 		<!-- Splash Screen -->
-		<MauiSplashScreen Include="Resources\Splash\splash.svg" />
+		<MauiSplashScreen Include="Resources\Splash\mirage_splash.png" />
 
 		<!-- Images -->
 		<MauiImage Include="Resources\Images\**" />
@@ -107,20 +80,22 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.3" />
 		<PackageReference Include="nor0x.Maui.ColorPicker" Version="2.0.4" />
 		<PackageReference Include="OnnxSharp" Version="0.3.2" />
-	</ItemGroup>
-
-	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-windows10.0.26100.0'">
-		<PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.21.0" />
-	</ItemGroup>
-
-	<ItemGroup Condition="'$(TargetFramework)' == 'net9.0-android35.0'">
-		<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.21.0" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.21.0" Condition="'$(TargetFramework)' == 'net9.0-android35.0'" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime.Gpu" Version="1.21.0" Condition="'$(TargetFramework)' == 'net9.0-windows10.0.26100.0'" />
 	</ItemGroup>
 
 	<ItemGroup>
 	  <MauiXaml Update="HelpAbout.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <AndroidLibrary Remove="C:\Users\vhtmf\.nuget\packages\microsoft.ml.onnxruntime\1.21.0\buildTransitive\net8.0-android31.0\..\..\runtimes\android\native\onnxruntime.aar" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <AndroidLibrary Remove="C:\Users\vhtmf\.nuget\packages\microsoft.ml.onnxruntime\1.21.0\buildTransitive\net8.0-android31.0\..\..\runtimes\android\native\onnxruntime.aar" />
 	</ItemGroup>
 
 </Project>
